@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ユキヨミ">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f3f5f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e141c" media="(prefers-color-scheme: dark)">
+<meta name="format-detection" content="telephone=no">
+<title>ユキヨミ 国内降雪予報</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* layout: 上から「当たり日」→「スキー場×7日の降雪表」→「選んだスキー場の詳細」。数字は Barlow Condensed、本文は Zen Kaku Gothic New */
+:root{
+  --bg:#f3f5f8; --surface:#ffffff; --surface2:#e9edf3; --line:#d5dbe5;
+  --ink:#16202e; --muted:#5d6a7c; --accent:#0b5fd1; --accent-ink:#ffffff;
+  --good:#12805c; --warn:#b26a00; --bad:#c0362c;
+  --s0:#eef1f5; --s1:#d6e6fb; --s2:#a9cdf7; --s3:#6fa9ee; --s4:#3a78dd; --s5:#3b3fc4; --s6:#5a1f9e;
+  --f-num:"Barlow Condensed","Zen Kaku Gothic New",sans-serif;
+  --f-body:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0e141c; --surface:#161e29; --surface2:#1e2835; --line:#2c3848;
+    --ink:#e8edf4; --muted:#93a0b3; --accent:#6aa8ff; --accent-ink:#08121f;
+    --good:#4cc79a; --warn:#f0b04a; --bad:#ff7d70;
+    --s0:#1b2430; --s1:#1d3350; --s2:#1f4a7c; --s3:#2a66b0; --s4:#3f86e6; --s5:#6d70f0; --s6:#a268f0;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0e141c; --surface:#161e29; --surface2:#1e2835; --line:#2c3848;
+  --ink:#e8edf4; --muted:#93a0b3; --accent:#6aa8ff; --accent-ink:#08121f;
+  --good:#4cc79a; --warn:#f0b04a; --bad:#ff7d70;
+  --s0:#1b2430; --s1:#1d3350; --s2:#1f4a7c; --s3:#2a66b0; --s4:#3f86e6; --s5:#6d70f0; --s6:#a268f0;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6}
+.wrap{max-width:1080px;margin:0 auto;padding:calc(16px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) calc(48px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));display:flex;flex-direction:column;gap:20px}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 16px;justify-content:space-between}
+h1{font-size:24px;margin:0;letter-spacing:.04em}
+h1 small{display:block;font-size:12px;font-weight:400;color:var(--muted);letter-spacing:0}
+h2{font-size:16px;margin:0 0 10px;text-wrap:balance}
+.meta{font-size:12px;color:var(--muted);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+button,select,input{font:inherit;color:inherit}
+.btn{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 14px;cursor:pointer;min-height:40px;touch-action:manipulation}
+.btn:hover{border-color:var(--accent)}
+.btn.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
+.banner{background:var(--surface2);border-left:4px solid var(--warn);padding:8px 12px;border-radius:6px;font-size:13px}
+.banner.err{border-left-color:var(--bad)}
+/* 当たり日 */
+.hits{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.hit{border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;background:var(--surface);text-align:left;display:flex;flex-direction:column;gap:2px}
+.hit:hover{border-color:var(--accent)}
+.hit .d{font-size:12px;color:var(--muted)}
+.hit .n{font-weight:700}
+.hit .cm{font-family:var(--f-num);font-size:34px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.hit .cm span{font-size:15px;font-weight:500;margin-left:2px}
+.pills{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.pill{font-size:11px;padding:1px 7px;border-radius:99px;border:1px solid var(--line);white-space:nowrap}
+.pill.good{color:var(--good);border-color:var(--good)}
+.pill.warn{color:var(--warn);border-color:var(--warn)}
+.pill.bad{color:var(--bad);border-color:var(--bad)}
+/* 操作列 */
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.controls label{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.controls select,.controls input{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:16px;min-height:40px}
+.views{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.controls input[type=number]{width:64px}
+/* 表 */
+.scroll{overflow-x:auto}
+table.grid{border-collapse:separate;border-spacing:3px;width:100%;min-width:560px}
+table.grid th{font-size:12px;font-weight:500;color:var(--muted);padding:2px 4px;text-align:center;white-space:nowrap}
+table.grid th.dh{cursor:pointer;line-height:1.25}
+table.grid th.dh.sorted{color:var(--accent);font-weight:700}
+table.grid td.name,table.grid th.nm{position:sticky;left:0;background:var(--surface);z-index:1}
+table.grid td.name{padding-right:8px;font-size:14px;display:flex;align-items:center;min-height:38px}
+table.grid td.name .lbl{display:flex;flex-direction:column;line-height:1.25}
+table.grid td.name button.r{background:none;border:0;padding:0;cursor:pointer;text-align:left;font-weight:500;touch-action:manipulation}
+table.grid td.name button.r:hover{color:var(--accent);text-decoration:underline}
+table.grid td.name .area{font-size:10px;color:var(--muted)}
+.star{background:none;border:0;cursor:pointer;font-size:18px;padding:6px 6px 6px 0;color:var(--muted);touch-action:manipulation}
+.star.on{color:var(--warn)}
+td.c{text-align:center;border-radius:6px;font-family:var(--f-num);font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;min-width:44px;height:36px;position:relative}
+td.c.pw{box-shadow:inset 0 0 0 2px var(--warn)}
+td.c .q{position:absolute;right:3px;top:0;font-size:10px;font-family:var(--f-body);opacity:.85}
+td.sum{font-family:var(--f-num);font-size:19px;font-weight:700;text-align:right;padding:0 6px;font-variant-numeric:tabular-nums}
+tr.sel td.name button.r{color:var(--accent)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:11px;color:var(--muted);margin-top:8px;align-items:center}
+.legend i{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:3px}
+/* 詳細 */
+.dhead{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;margin-bottom:8px}
+.dhead h2{margin:0;font-size:19px}
+.dhead .sub{font-size:12px;color:var(--muted)}
+canvas{width:100%;height:200px;display:block}
+.days{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;margin-top:12px}
+.day{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.day.pw{border-color:var(--warn);box-shadow:inset 0 0 0 1px var(--warn)}
+.day .hd{display:flex;justify-content:space-between;align-items:baseline}
+.day .hd b{font-size:14px}
+.day .big{font-family:var(--f-num);font-size:38px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.day .big span{font-size:14px;font-weight:500;margin-left:2px}
+.day .am{font-size:12px;color:var(--muted)}
+.lv{display:grid;grid-template-columns:auto 1fr auto auto;gap:2px 8px;font-size:13px;align-items:center}
+.lv .k{color:var(--muted);font-size:12px}
+.lv .v{font-family:var(--f-num);font-size:17px;font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.lv .t{font-size:12px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.bar{height:6px;border-radius:3px;background:var(--surface2);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--s4);border-radius:3px}
+.models{display:grid;grid-template-columns:auto 1fr auto;gap:2px 8px;font-size:12px;align-items:center;border-top:1px dashed var(--line);padding-top:6px}
+.models .k{color:var(--muted)}
+.models .v{font-family:var(--f-num);font-size:15px;font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+details.how{font-size:13px}
+details.how summary{cursor:pointer;font-weight:700}
+details.how ul{margin:8px 0 0;padding-left:20px;max-width:70ch}
+footer{font-size:12px;color:var(--muted)}
+footer a{color:var(--accent)}
+@media (max-width:480px){h1{font-size:21px}.day .big{font-size:34px}.panel{padding:12px 10px}table.grid td.name{font-size:13px;max-width:128px}table.grid{min-width:500px}td.c{min-width:40px}}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>ユキヨミ<small>国内スキー場の降雪予報 ・ 4つの気象モデルを比べて読む</small></h1>
+    <div class="meta"><span id="updated">読み込み中…</span><button class="btn" id="reload" type="button">最新に更新</button></div>
+  </header>
+
+  <div id="msg"></div>
+
+  <section class="panel" aria-labelledby="h-hits">
+    <h2 id="h-hits">お気に入りの当たり日（7日以内）</h2>
+    <div class="hits" id="hits"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-grid">
+    <h2 id="h-grid">山頂の降雪量（cm／日）</h2>
+    <div class="views" id="views"></div>
+    <div class="controls">
+      <label for="area">エリア<select id="area"></select></label>
+      <label for="th">パウダー基準<input id="th" type="number" min="1" max="99" step="1" value="15">cm以上</label>
+    </div>
+    <div class="scroll"><table class="grid" id="grid"></table></div>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <section class="panel" id="detail" aria-live="polite"></section>
+
+  <section class="panel">
+    <details class="how">
+      <summary>この予報の読み方と計算の根拠</summary>
+      <ul>
+        <li>気象データは Open-Meteo 経由で、気象庁（JMA MSM/GSM）・ECMWF・米国 GFS・ドイツ ICON の4モデルを取得しています。表は JMA と ECMWF の平均、詳細は4モデルの中央値です。</li>
+        <li>降雪量は「降水量 × 雪になる割合 × 雪の軽さ」で標高ごとに計算します。気温は中腹を基準に 100m あたり 0.6℃ で山頂・山麓へ補正します。</li>
+        <li>雪になる割合は 0.5℃以下で100%、2.5℃以上で0%。雪の軽さ（降水1mmあたりのcm）は −10℃以下 1.8、−6℃以下 1.5、−3℃以下 1.2、−1℃以下 1.0、それより高い 0.8 です。</li>
+        <li>雪質は降っている時間帯の山頂気温から判定します。−8℃以下「極上ドライ」、−4℃以下「ドライ」、−1℃以下「やや重め」、それより高い「湿雪」。</li>
+        <li>信頼度はモデル間のばらつきです。そろっていれば「高」、割れていれば「低」。「低」の日は直前まで様子を見てください。</li>
+        <li>リフト注意は営業時間帯（8〜16時）の最大瞬間風速の目安です。12m/s 以上「注意」、18m/s 以上「運休リスク」。山頂の実際の風はこれより強いことがあります。</li>
+        <li>「朝イチ」は前日18時〜当日9時に山頂で積もる量です。圧雪前の新雪を狙う目安になります。</li>
+        <li>長野 53・北海道 31 か所を収録しています（リフト1〜2本の小規模な町営ゲレンデは未収録）。スキー場の座標と標高は概略値です。ピンポイントの山岳予報ではないので、現地の発表もあわせて確認してください。</li>
+      </ul>
+    </details>
+  </section>
+
+  <footer>気象データ: <a href="https://open-meteo.com/">Open-Meteo.com</a>（CC BY 4.0）／ モデル: JMA・ECMWF IFS・NOAA GFS・DWD ICON</footer>
+</div>
+
+<script>
+"use strict";
+/* ---------- スキー場マスタ（座標・標高は概略値） ---------- */
+const R = [
+ // id, 名前, 地域, エリア, 緯度, 経度, 山麓m, 山頂m
+ // ===== 長野 =====
+ ["happo","白馬八方尾根","長野","白馬・大町",36.702,137.837,760,1831],
+ ["goryu","白馬五竜・Hakuba47","長野","白馬・大町",36.664,137.838,750,1676],
+ ["iwatake","白馬岩岳","長野","白馬・大町",36.716,137.857,750,1289],
+ ["tsugaike","栂池高原","長野","白馬・大町",36.760,137.880,800,1704],
+ ["hakuba-norikura","白馬乗鞍温泉","長野","白馬・大町",36.790,137.885,700,1300],
+ ["cortina","白馬コルチナ","長野","白馬・大町",36.800,137.888,872,1402],
+ ["kashimayari","鹿島槍","長野","白馬・大町",36.585,137.830,830,1550],
+ ["jiigatake","爺ガ岳","長野","白馬・大町",36.560,137.840,920,1200],
+ ["shiga-takama","志賀高原 高天ヶ原・一の瀬","長野","志賀・北志賀",36.734,138.519,1560,1970],
+ ["shiga-yake","志賀高原 焼額山・奥志賀","長野","志賀・北志賀",36.755,138.510,1500,2000],
+ ["shiga-central","志賀高原 中央（ジャイアント・寺小屋）","長野","志賀・北志賀",36.715,138.500,1500,2125],
+ ["shiga-sun","志賀高原 サンバレー・丸池","長野","志賀・北志賀",36.700,138.490,1450,1750],
+ ["shiga-kuma","志賀高原 熊の湯","長野","志賀・北志賀",36.682,138.505,1680,1960],
+ ["shiga-yokote","志賀高原 横手山・渋峠","長野","志賀・北志賀",36.667,138.527,1705,2307],
+ ["ryuoo","竜王スキーパーク","長野","志賀・北志賀",36.795,138.445,850,1930],
+ ["xjam","よませ温泉・X-JAM高井富士","長野","志賀・北志賀",36.775,138.430,750,1500],
+ ["komaruyama","北志賀小丸山","長野","志賀・北志賀",36.790,138.420,700,1000],
+ ["yamaboku","YAMABOKUワイルドスノーパーク","長野","志賀・北志賀",36.660,138.430,1500,1770],
+ ["nozawa","野沢温泉","長野","野沢・飯山・信濃町",36.920,138.450,565,1650],
+ ["togari","戸狩温泉","長野","野沢・飯山・信濃町",36.930,138.360,420,1050],
+ ["kijimadaira","木島平","長野","野沢・飯山・信濃町",36.845,138.440,510,1260],
+ ["sakae","さかえ倶楽部","長野","野沢・飯山・信濃町",36.985,138.570,500,900],
+ ["madarao","斑尾高原","長野","野沢・飯山・信濃町",36.855,138.290,910,1350],
+ ["tangram","タングラム斑尾","長野","野沢・飯山・信濃町",36.845,138.275,800,1320],
+ ["kurohime","黒姫高原","長野","野沢・飯山・信濃町",36.810,138.170,730,1200],
+ ["togakushi","戸隠","長野","野沢・飯山・信濃町",36.762,138.097,1200,1748],
+ ["iizuna","いいづなリゾート","長野","野沢・飯山・信濃町",36.745,138.180,900,1280],
+ ["sugadaira","菅平高原","長野","東信・軽井沢",36.530,138.330,1250,1650],
+ ["karuizawa","軽井沢プリンスホテル","長野","東信・軽井沢",36.335,138.635,940,1155],
+ ["asama2000","アサマ2000パーク","長野","東信・軽井沢",36.415,138.455,1710,2000],
+ ["yunomaru","湯の丸","長野","東信・軽井沢",36.400,138.415,1720,2010],
+ ["parada","佐久スキーガーデン パラダ","長野","東信・軽井沢",36.260,138.515,980,1200],
+ ["koumi","小海リエックス","長野","東信・軽井沢",36.050,138.410,1450,1780],
+ ["nobeyama","シャトレーゼ野辺山","長野","東信・軽井沢",35.945,138.455,1500,1700],
+ ["kurumayama","車山高原","長野","蓼科・八ヶ岳",36.100,138.195,1560,1925],
+ ["shirakaba","白樺高原国際・しらかば2in1","長野","蓼科・八ヶ岳",36.110,138.240,1530,1830],
+ ["echo","エコーバレー","長野","蓼科・八ヶ岳",36.130,138.210,1500,1810],
+ ["blanche","ブランシュたかやま","長野","蓼科・八ヶ岳",36.140,138.190,1350,1807],
+ ["pilatus","ピラタス蓼科","長野","蓼科・八ヶ岳",36.065,138.320,1770,2100],
+ ["tateshina-tokyu","蓼科東急","長野","蓼科・八ヶ岳",36.050,138.285,1300,1600],
+ ["fujimi-panorama","富士見パノラマ","長野","蓼科・八ヶ岳",35.905,138.205,1050,1780],
+ ["fujimi-kogen","富士見高原","長野","蓼科・八ヶ岳",35.905,138.315,1200,1420],
+ ["norikura","Mt.乗鞍","長野","中信・木曽",36.110,137.620,1500,2000],
+ ["nomugi","野麦峠","長野","中信・木曽",36.060,137.640,1400,2130],
+ ["asahi-prime","あさひプライム","長野","中信・木曽",36.115,137.830,1100,1480],
+ ["yabuhara","やぶはら高原","長野","中信・木曽",35.945,137.745,1100,1650],
+ ["kiso-fukushima","きそふくしま","長野","中信・木曽",35.895,137.640,1340,1700],
+ ["mia","開田高原マイア","長野","中信・木曽",35.925,137.555,1500,2120],
+ ["ontake","おんたけ2240","長野","中信・木曽",35.870,137.510,1680,2240],
+ ["ina","伊那スキーリゾート","長野","南信",35.840,137.900,950,1250],
+ ["komagane","駒ヶ根高原","長野","南信",35.740,137.890,880,1000],
+ ["heavens","ヘブンスそのはら","長野","南信",35.440,137.640,1400,1600],
+ ["jibuzaka","治部坂高原","長野","南信",35.370,137.680,1190,1400],
+ // ===== 北海道 =====
+ ["niseko","ニセコ グラン・ヒラフ","北海道","ニセコ・ルスツ",42.862,140.704,260,1200],
+ ["hanazono","ニセコ HANAZONO","北海道","ニセコ・ルスツ",42.875,140.715,310,1030],
+ ["niseko-village","ニセコビレッジ","北海道","ニセコ・ルスツ",42.835,140.690,280,1170],
+ ["annupuri","ニセコ アンヌプリ国際","北海道","ニセコ・ルスツ",42.850,140.655,400,1156],
+ ["moiwa","ニセコ モイワ","北海道","ニセコ・ルスツ",42.840,140.635,330,800],
+ ["rusutsu","ルスツ","北海道","ニセコ・ルスツ",42.748,140.904,400,994],
+ ["nakayama","中山峠","北海道","ニセコ・ルスツ",42.860,141.090,830,950],
+ ["kiroro","キロロ","北海道","札幌・小樽",43.076,140.983,570,1180],
+ ["kokusai","札幌国際","北海道","札幌・小樽",43.073,141.092,630,1100],
+ ["teine","サッポロテイネ","北海道","札幌・小樽",43.083,141.202,340,1023],
+ ["bankei","さっぽろばんけい","北海道","札幌・小樽",43.040,141.290,215,480],
+ ["sapporo-moiwa","札幌藻岩山","北海道","札幌・小樽",43.010,141.320,220,530],
+ ["fus","Fu's スノーエリア","北海道","札幌・小樽",42.965,141.330,350,530],
+ ["onze","スノークルーズ・オーンズ","北海道","札幌・小樽",43.140,141.130,50,500],
+ ["asarigawa","朝里川温泉","北海道","札幌・小樽",43.140,141.040,170,680],
+ ["tenguyama","小樽天狗山","北海道","札幌・小樽",43.170,140.980,120,530],
+ ["yubari","マウントレースイ（夕張）","北海道","札幌・小樽",43.050,141.970,300,700],
+ ["furano","富良野","北海道","富良野・旭川・道北",43.330,142.340,245,1074],
+ ["kamui","カムイスキーリンクス","北海道","富良野・旭川・道北",43.700,142.190,150,751],
+ ["pippu","ぴっぷ","北海道","富良野・旭川・道北",43.920,142.510,200,630],
+ ["asahidake","旭岳","北海道","富良野・旭川・道北",43.652,142.800,1100,1600],
+ ["kurodake","大雪山 黒岳","北海道","富良野・旭川・道北",43.720,142.920,1300,1520],
+ ["nayoro","名寄ピヤシリ","北海道","富良野・旭川・道北",44.370,142.550,170,580],
+ ["tomamu","トマム","北海道","トマム・十勝・日高",43.063,142.632,540,1239],
+ ["sahoro","サホロ","北海道","トマム・十勝・日高",43.170,142.790,420,1030],
+ ["nukabira","ぬかびら源泉郷","北海道","トマム・十勝・日高",43.360,143.190,540,1100],
+ ["hidaka","日高国際","北海道","トマム・十勝・日高",42.880,142.440,300,750],
+ ["akan","阿寒湖畔","北海道","道東・道南",43.430,144.080,480,700],
+ ["kitami","ノーザンアークリゾート（北見）","北海道","道東・道南",43.730,143.830,250,600],
+ ["nanae","函館七飯スノーパーク","北海道","道東・道南",42.000,140.720,250,950],
+ ["onuma","グリーンピア大沼","北海道","道東・道南",42.020,140.560,200,550],
+ // ===== その他の地域（主要のみ） =====
+ ["hakkoda","八甲田","その他","東北",40.668,140.859,660,1324],
+ ["appi","安比高原","その他","東北",40.000,140.970,500,1304],
+ ["geto","夏油高原","その他","東北",39.262,140.888,640,1070],
+ ["zao","蔵王温泉","その他","東北",38.168,140.398,780,1661],
+ ["nekoma","ネコマ マウンテン","その他","東北",37.630,140.040,700,1338],
+ ["iwakura","尾瀬岩鞍","その他","関東",36.816,139.238,1000,1700],
+ ["kawaba","川場","その他","関東",36.740,139.130,1290,1870],
+ ["marunuma","丸沼高原","その他","関東",36.812,139.345,1300,2000],
+ ["tambara","たんばら","その他","関東",36.770,139.070,1250,1550],
+ ["tenjin","谷川岳 天神平","その他","関東",36.826,138.962,750,1500],
+ ["kusatsu","草津温泉","その他","関東",36.633,138.573,1245,1600],
+ ["manza","万座温泉","その他","関東",36.640,138.500,1646,1994],
+ ["naeba","苗場","その他","新潟",36.790,138.790,900,1789],
+ ["kagura","かぐら","その他","新潟",36.860,138.760,620,1845],
+ ["gala","GALA湯沢","その他","新潟",36.951,138.800,358,1181],
+ ["ishiuchi","石打丸山","その他","新潟",36.975,138.810,256,920],
+ ["maiko","舞子","その他","新潟",36.990,138.830,260,920],
+ ["joetsu","上越国際","その他","新潟",37.040,138.830,215,1017],
+ ["arai","ロッテアライ","その他","新潟",36.990,138.180,329,1280],
+ ["akakura","赤倉観光","その他","新潟",36.895,138.165,740,1500],
+ ["suginohara","妙高杉ノ原","その他","新潟",36.860,138.130,731,1855],
+ ["takasu","高鷲スノーパーク","その他","中部・西日本",36.000,136.860,950,1550],
+ ["meiho","めいほう","その他","中部・西日本",35.930,137.020,900,1600],
+ ["jam","スキージャム勝山","その他","中部・西日本",36.060,136.570,610,1320],
+ ["biwako","びわ湖バレイ","その他","中部・西日本",35.210,135.890,880,1174],
+ ["hachikita","ハチ北","その他","中部・西日本",35.390,134.550,520,1071],
+ ["daisen","だいせんホワイトリゾート","その他","中部・西日本",35.390,133.530,740,1200]
+].map(a=>({id:a[0],name:a[1],region:a[2],area:a[3],lat:a[4],lon:a[5],base:a[6],top:a[7],mid:Math.round((a[6]+a[7])/2)}));
+const VIEWS = ["お気に入り","長野","北海道","その他"];
+const MODELS = [["jma_seamless","JMA 気象庁"],["ecmwf_ifs025","ECMWF 欧州"],["gfs_seamless","GFS 米国"],["icon_seamless","ICON ドイツ"]];
+const OV_MODELS = ["jma_seamless","ecmwf_ifs025"];
+const API = "https://api.open-meteo.com/v1/forecast";
+const DAYS = 7, LAPSE = 6.0, CACHE_MIN = 60;
+const MOCK = /[?&]mock=1/.test(location.search);
+const WD = ["日","月","火","水","木","金","土"];
+
+/* ---------- 保存（1人のブラウザ内だけ） ---------- */
+const store = {
+  get(k,d){try{const v=localStorage.getItem("yukiyomi."+k);return v==null?d:JSON.parse(v)}catch(e){return d}},
+  set(k,v){try{localStorage.setItem("yukiyomi."+k,JSON.stringify(v))}catch(e){}}
+};
+let favs = new Set(store.get("favs",["shiga-takama","nozawa","happo","niseko","rusutsu","furano"]).filter(id=>R.some(r=>r.id===id)));
+let view = store.get("view2","長野"), area = "すべて", sortDay = -1, selected = store.get("sel","shiga-takama");
+if(VIEWS.indexOf(view)<0) view="長野";
+const viewRows = ()=> R.filter(r=> view==="お気に入り" ? favs.has(r.id) : (r.region===view && (area==="すべて"||r.area===area)));
+let threshold = store.get("th",15);
+let OV = null, DET = {};
+
+/* ---------- 雪の計算 ---------- */
+function snowOf(p,t){ // p: 降水mm/h, t: 気温℃ → cm
+  if(p==null||t==null||p<=0) return 0;
+  const frac = t<=0.5?1 : t>=2.5?0 : (2.5-t)/2;
+  const ratio = t<=-10?1.8 : t<=-6?1.5 : t<=-3?1.2 : t<=-1?1.0 : 0.8;
+  return p*frac*ratio;
+}
+const tAt = (tMid,r,elev)=> tMid==null?null : tMid - LAPSE*(elev-r.mid)/1000;
+function series(h,v,m){ return h[v+"_"+m] || h[v] || null; }
+function valid(a){ return !!a && a.filter(x=>x!=null).length >= a.length*0.9; }
+function median(a){ const b=a.filter(x=>x!=null&&!isNaN(x)).sort((x,y)=>x-y); if(!b.length) return null; const m=b.length>>1; return b.length%2?b[m]:(b[m-1]+b[m])/2; }
+function dayIndex(times){ // 日付ごとの時間インデックス
+  const days=[]; let cur=null;
+  times.forEach((t,i)=>{const d=t.slice(0,10); if(!cur||cur.date!==d){cur={date:d,idx:[]};days.push(cur)} cur.idx.push(i)});
+  return days.filter(d=>d.idx.length>=20).slice(0,DAYS);
+}
+function fmtDay(date,i){ const d=new Date(date+"T00:00:00"); return (i===0?"今日 ":"")+(d.getMonth()+1)+"/"+d.getDate()+"("+WD[d.getDay()]+")"; }
+function quality(t){ return t==null?["—",""] : t<=-8?["極上ドライ","good"] : t<=-4?["ドライ","good"] : t<=-1?["やや重め","warn"] : ["湿雪","bad"]; }
+function snowColor(cm){ const i = cm<1?0 : cm<5?1 : cm<10?2 : cm<20?3 : cm<30?4 : cm<50?5 : 6; return ["var(--s"+i+")", i>=4?"#fff":"var(--ink)"]; }
+const r1 = x=> x==null?"—": (x<10? (Math.round(x*10)/10).toString() : Math.round(x).toString());
+const r0 = x=> x==null?"—": Math.round(x).toString();
+const esc = s=> String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------- 取得 ---------- */
+async function getJSON(url){
+  const res = await fetch(url);
+  const j = await res.json().catch(()=>null);
+  if(!res.ok || !j || j.error) throw new Error((j&&j.reason)||("HTTP "+res.status));
+  return Array.isArray(j)?j:[j];
+}
+function mockHourly(r,models,seed){ // 動作確認用の合成データ
+  const n=DAYS*24, time=[], h={time}; const now=new Date(); now.setHours(0,0,0,0);
+  for(let i=0;i<n;i++){const d=new Date(now.getTime()+i*3600e3); time.push(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")+"T"+String(d.getHours()).padStart(2,"0")+":00")}
+  models.forEach((m,mi)=>{
+    const T=[],P=[],W=[],G=[],F=[]; const ph=seed*1.7+mi*0.4;
+    for(let i=0;i<n;i++){
+      const storm=Math.max(0,Math.sin(i/19+ph)+Math.sin(i/53+seed)*0.8-0.5);
+      T.push(Math.round((-4-(r.mid-900)/200+Math.sin(i/3.82)*2.5+Math.sin(i/40+seed)*4+mi*0.3)*10)/10);
+      P.push(Math.round(storm*(1.6+mi*0.25)*10)/10); W.push(3+storm*4); G.push(m==="jma_seamless"?null:6+storm*(9+mi*2)); F.push(m.indexOf("gfs")>=0||m.indexOf("icon")>=0?1200+Math.sin(i/30)*500:null);
+    }
+    h["temperature_2m_"+m]=T;h["precipitation_"+m]=P;h["wind_speed_10m_"+m]=W;h["wind_gusts_10m_"+m]=G;h["freezing_level_height_"+m]=F;
+  });
+  return {hourly:h,elevation:r.mid};
+}
+function calcRow(r,h,days){
+  const per = OV_MODELS.map(m=>{ const T=series(h,"temperature_2m",m), P=series(h,"precipitation",m); return valid(T)&&valid(P)?{T,P}:null; }).filter(Boolean);
+  return days.map(d=>{
+    const vals = per.map(s=>d.idx.reduce((a,i)=>a+snowOf(s.P[i],tAt(s.T[i],r,r.top)),0));
+    const tw = per.map(s=>{let w=0,sw=0; d.idx.forEach(i=>{const t=tAt(s.T[i],r,r.top),sn=snowOf(s.P[i],t); w+=sn; sw+=sn*t}); return w>0.3?sw/w:null});
+    const cm = vals.length? vals.reduce((a,b)=>a+b,0)/vals.length : null;
+    const split = vals.length>1 && Math.abs(vals[0]-vals[1]) > Math.max(5,0.6*Math.max(vals[0],vals[1]));
+    return {cm, split, qt: median(tw)};
+  });
+}
+async function loadOverview(list,force){ // list: 必要なスキー場だけ取得してキャッシュに足す
+  if(!OV){ const c=MOCK?null:store.get("ov2",null); OV = c&&c.rows ? c : {dates:null,rows:{},at:0}; }
+  const fresh = id=>{ const x=OV.rows[id]; return x && Date.now()-x.at < CACHE_MIN*60e3; };
+  const need = list.filter(r=> force || !fresh(r.id));
+  for(let k=0;k<need.length;k+=50){
+    const part = need.slice(k,k+50);
+    let arr;
+    if(MOCK) arr = part.map(r=>mockHourly(r,OV_MODELS,R.indexOf(r)));
+    else arr = await getJSON(API+"?latitude="+part.map(r=>r.lat).join(",")+"&longitude="+part.map(r=>r.lon).join(",")+"&elevation="+part.map(r=>r.mid).join(",")+
+      "&hourly=temperature_2m,precipitation&models="+OV_MODELS.join(",")+"&forecast_days="+DAYS+"&timezone=Asia%2FTokyo");
+    if(arr.length!==part.length) throw new Error("スキー場の数と応答の数が合いません");
+    const days = dayIndex(arr[0].hourly.time), dates = days.map(d=>d.date);
+    if(!OV.dates || OV.dates[0]!==dates[0]){ OV.rows={}; }   // 日付が変わったら古い分は捨てる
+    OV.dates = dates;
+    part.forEach((r,ri)=>{ OV.rows[r.id] = {at:Date.now(), days:calcRow(r,arr[ri].hourly,days)}; });
+    OV.at = Date.now();
+  }
+  if(!MOCK && need.length) store.set("ov2",OV);
+}
+async function loadDetail(r,force){
+  const c = DET[r.id];
+  if(!force && c && Date.now()-c.at < CACHE_MIN*60e3) return c;
+  let arr;
+  if(MOCK) arr=[mockHourly(r,MODELS.map(m=>m[0]),R.indexOf(r))];
+  else arr = await getJSON(API+"?latitude="+r.lat+"&longitude="+r.lon+"&elevation="+r.mid+
+    "&hourly=temperature_2m,precipitation,wind_speed_10m,wind_gusts_10m,freezing_level_height&models="+MODELS.map(m=>m[0]).join(",")+
+    "&forecast_days="+DAYS+"&timezone=Asia%2FTokyo&wind_speed_unit=ms");
+  const h = arr[0].hourly, time = h.time, days = dayIndex(time);
+  const ms = MODELS.map(([m,label])=>{ const T=series(h,"temperature_2m",m),P=series(h,"precipitation",m); if(!valid(T)||!valid(P)) return null;
+    return {m,label,T,P,G:series(h,"wind_gusts_10m",m),F:series(h,"freezing_level_height",m)}; }).filter(Boolean);
+  if(!ms.length) throw new Error("使えるモデルのデータがありません");
+  const levels = [["山頂",r.top],["中腹",r.mid],["山麓",r.base]];
+  // 時間ごとの中央値（グラフ用）
+  const hourly = time.map((_,i)=>({ snow: median(ms.map(s=>snowOf(s.P[i],tAt(s.T[i],r,r.top)))), t: median(ms.map(s=>tAt(s.T[i],r,r.top))) }));
+  const out = days.map((d,di)=>{
+    const perModel = ms.map(s=>({label:s.label, cm:d.idx.reduce((a,i)=>a+snowOf(s.P[i],tAt(s.T[i],r,r.top)),0)}));
+    const lv = levels.map(([k,e])=>{
+      const cm = median(ms.map(s=>d.idx.reduce((a,i)=>a+snowOf(s.P[i],tAt(s.T[i],r,e)),0)));
+      const ts = d.idx.map(i=>median(ms.map(s=>tAt(s.T[i],r,e)))).filter(x=>x!=null);
+      const rain = median(ms.map(s=>d.idx.reduce((a,i)=>{const t=tAt(s.T[i],r,e); return a+(s.P[i]>0&&t>1.5?s.P[i]:0)},0)));
+      return {k,e,cm,tmin:Math.min.apply(null,ts),tmax:Math.max.apply(null,ts),rain};
+    });
+    const top = lv[0].cm, vals = perModel.map(p=>p.cm);
+    const spread = Math.max.apply(null,vals)-Math.min.apply(null,vals);
+    const conf = ms.length<2?["—",""] : spread<=Math.max(4,0.5*top)?["高","good"] : spread<=Math.max(8,1.0*top)?["中","warn"] : ["低","bad"];
+    let w=0,sw=0; d.idx.forEach(i=>{const x=hourly[i]; if(x.snow>0){w+=x.snow;sw+=x.snow*x.t}});
+    const q = quality(w>0.3?sw/w:null);
+    const gusts = d.idx.filter(i=>{const hh=+time[i].slice(11,13);return hh>=8&&hh<=16}).map(i=>median(ms.map(s=>s.G?s.G[i]:null))).filter(x=>x!=null);
+    const gust = gusts.length?Math.max.apply(null,gusts):null;
+    const lift = gust==null?["—",""] : gust>=18?["運休リスク","bad"] : gust>=12?["注意","warn"] : ["問題なし","good"];
+    // 朝イチ: 前日18時〜当日9時
+    let am=null; const a0=d.idx[0]-6, a1=d.idx[0]+9; if(a0>=0){ am=0; for(let i=a0;i<a1&&i<hourly.length;i++) am+=hourly[i].snow||0; }
+    const fz = median(d.idx.map(i=>median(ms.map(s=>s.F?s.F[i]:null))));
+    return {date:d.date, top, lv, perModel, conf, q, gust, lift, am, fz};
+  });
+  const res = {at:Date.now(), time, hourly, days:out, nModels:ms.length, dayStart:days.map(d=>d.idx[0])};
+  DET[r.id]=res; return res;
+}
+
+/* ---------- 描画 ---------- */
+const $ = id=>document.getElementById(id);
+function showMsg(html,err){ $("msg").innerHTML = html?'<div class="banner'+(err?" err":"")+'">'+html+"</div>":""; }
+function renderHits(){
+  const list=[];
+  R.filter(r=>favs.has(r.id)&&OV.rows[r.id]).forEach(r=>OV.rows[r.id].days.forEach((c,i)=>{ if(c.cm!=null) list.push({r,i,c}); }));
+  const over = list.filter(x=>x.c.cm>=threshold).sort((a,b)=>a.i-b.i||b.c.cm-a.c.cm).slice(0,8);
+  let html="";
+  const card = x=>{ const q=quality(x.c.qt); return '<button type="button" class="hit" data-id="'+x.r.id+'"><span class="d">'+fmtDay(OV.dates[x.i],x.i)+'</span><span class="n">'+esc(x.r.name)+
+    '</span><span class="cm">'+r0(x.c.cm)+'<span>cm</span></span><span class="pills"><span class="pill '+q[1]+'">'+q[0]+'</span>'+(x.c.split?'<span class="pill bad">モデル割れ</span>':'<span class="pill good">モデル一致</span>')+'</span></button>'; };
+  if(over.length) html = over.map(card).join("");
+  else {
+    const best = list.sort((a,b)=>b.c.cm-a.c.cm)[0];
+    html = '<div style="grid-column:1/-1;font-size:13px;color:var(--muted)">この7日間、'+threshold+'cm 以上の予報はありません。'+(best&&best.c.cm>=1?'いちばん降るのは次の日です。':'')+'</div>'+(best&&best.c.cm>=1?card(best):"");
+  }
+  if(!favs.size) html='<div style="font-size:13px;color:var(--muted)">表の ☆ を押すと、お気に入りに追加できます。</div>';
+  $("hits").innerHTML = html;
+}
+let gridSeq=0;
+async function renderGrid(){
+  const seq=++gridSeq;
+  $("views").innerHTML = VIEWS.map(v=>'<button type="button" class="btn'+(v===view?" on":"")+'" data-view="'+v+'">'+v+(v==="お気に入り"?"":"（"+R.filter(r=>r.region===v).length+"）")+'</button>').join("");
+  const areas = view==="お気に入り" ? [] : [...new Set(R.filter(r=>r.region===view).map(r=>r.area))];
+  $("area").innerHTML = ["すべて",...areas].map(a=>"<option"+(a===area?" selected":"")+">"+a+"</option>").join("");
+  $("area").disabled = view==="お気に入り";
+  let rows = viewRows();
+  if(rows.some(r=>!OV||!OV.rows[r.id])) $("grid").innerHTML = '<tbody><tr><td style="color:var(--muted);font-size:13px;padding:10px 0">'+view+' の予報を読み込み中…</td></tr></tbody>';
+  try{ await loadOverview(rows,false); }
+  catch(e){ if(seq===gridSeq) $("grid").innerHTML='<tbody><tr><td><div class="banner err">取得できませんでした（'+esc(e.message)+'）。「最新に更新」を押してください。</div></td></tr></tbody>'; return; }
+  if(seq!==gridSeq) return;
+  rows = rows.filter(r=>OV.rows[r.id]);
+  const total = r=>OV.rows[r.id].days.reduce((a,c)=>a+(c.cm||0),0);
+  const key = r=> sortDay<0 ? total(r) : (OV.rows[r.id].days[sortDay].cm||0);
+  rows = rows.slice().sort((a,b)=>key(b)-key(a));
+  let h = '<thead><tr><th class="nm" style="text-align:left">スキー場（'+rows.length+'）</th>'+OV.dates.map((d,i)=>'<th class="dh'+(sortDay===i?" sorted":"")+'" data-i="'+i+'" title="この日で並べ替え">'+(i===0?"今日":fmtDay(d,-1).split("(")[0])+"<br>("+fmtDay(d,-1).split("(")[1]+'</th>').join("")+
+    '<th class="dh'+(sortDay<0?" sorted":"")+'" data-i="-1" title="7日合計で並べ替え">7日計</th></tr></thead><tbody>';
+  rows.forEach(r=>{
+    h += '<tr class="'+(r.id===selected?"sel":"")+'"><td class="name"><button type="button" class="star'+(favs.has(r.id)?" on":"")+'" data-fav="'+r.id+'" aria-label="お気に入り切替">'+(favs.has(r.id)?"★":"☆")+
+      '</button><span class="lbl"><button type="button" class="r" data-id="'+r.id+'">'+esc(r.name)+'</button><span class="area">'+(view==="お気に入り"?r.region+" ":"")+r.area+'</span></span></td>';
+    OV.rows[r.id].days.forEach(c=>{ const col=snowColor(c.cm||0);
+      h += '<td class="c'+(c.cm>=threshold?" pw":"")+'" style="background:'+col[0]+';color:'+col[1]+'">'+(c.cm==null?"—":c.cm<0.5?"":r0(c.cm))+(c.split&&c.cm>=3?'<span class="q" title="モデルの予想が割れています">?</span>':"")+'</td>'; });
+    h += '<td class="sum">'+r0(total(r))+'</td></tr>';
+  });
+  if(!rows.length) h += '<tr><td colspan="'+(OV.dates.length+2)+'" style="color:var(--muted);font-size:13px;padding:10px 0">お気に入りがありません。「長野」「北海道」の表で ☆ を押して追加してください。</td></tr>';
+  $("grid").innerHTML = h+"</tbody>";
+  $("legend").innerHTML = [["1〜4",1],["5〜9",2],["10〜19",3],["20〜29",4],["30〜49",5],["50〜",6]].map(x=>'<span><i style="background:var(--s'+x[1]+')"></i>'+x[0]+'cm</span>').join("")+
+    '<span><i style="box-shadow:inset 0 0 0 2px var(--warn);background:transparent"></i>パウダー基準以上</span><span>? = モデルの予想が割れている</span><span>日付を押すとその日で並べ替え</span>';
+  $("updated").textContent = "取得 "+new Date(OV.at).toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"});
+}
+async function renderDetail(force,scroll){
+  const r = R.find(x=>x.id===selected) || R[0], box=$("detail");
+  box.innerHTML = '<div class="dhead"><h2>'+esc(r.name)+'</h2><span class="sub">読み込み中…</span></div>';
+  let d;
+  try{ d = await loadDetail(r,force); }
+  catch(e){ box.innerHTML='<div class="dhead"><h2>'+esc(r.name)+'</h2></div><div class="banner err">詳細を取得できませんでした（'+esc(e.message)+'）。少し待って「最新に更新」を押してください。</div>'; return; }
+  if(r.id!==selected) return;
+  const maxTop = Math.max(10, ...d.days.map(x=>x.lv[0].cm||0));
+  box.innerHTML = '<div class="dhead"><h2>'+esc(r.name)+'</h2><span class="sub">'+r.region+' '+r.area+' ・ 山頂 '+r.top+'m ／ 中腹 '+r.mid+'m ／ 山麓 '+r.base+'m ・ '+d.nModels+'モデルの中央値</span></div>'+
+    '<canvas id="chart" role="img" aria-label="山頂の1時間ごとの降雪量と気温"></canvas>'+
+    '<div class="legend"><span><i style="background:var(--s4)"></i>山頂の降雪（cm/時）</span><span><i style="background:var(--bad);height:3px;vertical-align:3px"></i>山頂の気温（℃）</span></div>'+
+    '<div class="days">'+d.days.map((x,i)=>{
+      const mm = Math.max(1,...x.perModel.map(p=>p.cm));
+      return '<div class="day'+(x.top>=threshold?" pw":"")+'"><div class="hd"><b>'+fmtDay(x.date,i)+'</b><span class="am">朝イチ '+(x.am==null?"—":r0(x.am)+"cm")+'</span></div>'+
+      '<div class="big">'+r0(x.top)+'<span>cm（山頂）</span></div>'+
+      '<div class="pills"><span class="pill '+x.q[1]+'">雪質 '+x.q[0]+'</span><span class="pill '+x.conf[1]+'">信頼度 '+x.conf[0]+'</span><span class="pill '+x.lift[1]+'">リフト '+x.lift[0]+(x.gust!=null?" "+r0(x.gust)+"m/s":"")+'</span></div>'+
+      '<div class="lv">'+x.lv.map(l=>'<span class="k">'+l.k+'</span><span class="bar"><i style="width:'+Math.min(100,(l.cm||0)/maxTop*100)+'%"></i></span><span class="v">'+r0(l.cm)+'cm</span><span class="t">'+r0(l.tmin)+'〜'+r0(l.tmax)+'℃'+(l.rain>=1?" 雨"+r0(l.rain)+"mm":"")+'</span>').join("")+'</div>'+
+      '<div class="models">'+x.perModel.map(p=>'<span class="k">'+p.label+'</span><span class="bar"><i style="width:'+(p.cm/mm*100)+'%;background:var(--muted)"></i></span><span class="v">'+r0(p.cm)+'</span>').join("")+'</div>'+
+      (x.fz!=null?'<div class="am">0℃ の高さ 約 '+Math.round(x.fz/50)*50+'m</div>':"")+'</div>';
+    }).join("")+'</div>';
+  drawChart(d);
+  if(scroll) box.scrollIntoView({behavior:"smooth",block:"start"});
+}
+function drawChart(d){
+  const cv=$("chart"); if(!cv) return;
+  const css=getComputedStyle(document.documentElement), col=n=>css.getPropertyValue(n).trim();
+  const dpr=window.devicePixelRatio||1, W=cv.clientWidth, H=cv.clientHeight; cv.width=W*dpr; cv.height=H*dpr;
+  const g=cv.getContext("2d"); g.scale(dpr,dpr); g.clearRect(0,0,W,H);
+  const L=30,Rr=34,T=10,B=22, pw=W-L-Rr, ph=H-T-B, n=d.hourly.length;
+  const smax=Math.max(2,Math.ceil(Math.max(...d.hourly.map(x=>x.snow||0))));
+  const ts=d.hourly.map(x=>x.t).filter(x=>x!=null); const tmin=Math.floor(Math.min(...ts,-1)/5)*5, tmax=Math.ceil(Math.max(...ts,1)/5)*5;
+  const x=i=>L+i/n*pw, ys=v=>T+ph-(v/smax)*ph, yt=v=>T+ph-((v-tmin)/(tmax-tmin))*ph;
+  g.font="11px "+col("--f-body"); g.textBaseline="middle";
+  // 目盛り
+  g.strokeStyle=col("--line"); g.fillStyle=col("--muted"); g.lineWidth=1;
+  for(let k=0;k<=2;k++){ const v=smax*k/2, y=ys(v); g.beginPath(); g.moveTo(L,y); g.lineTo(L+pw,y); g.stroke(); g.textAlign="right"; g.fillText((Math.round(v*10)/10)+"",L-4,y); }
+  g.textAlign="left"; [tmin,0,tmax].filter((v,i,a)=>a.indexOf(v)===i&&v>=tmin&&v<=tmax).forEach(v=>g.fillText(v+"℃",L+pw+4,yt(v)));
+  // 日区切り
+  d.dayStart.forEach((s,i)=>{ const xx=x(s); g.strokeStyle=col("--line"); g.beginPath(); g.moveTo(xx,T); g.lineTo(xx,T+ph); g.stroke();
+    g.fillStyle=col("--muted"); g.textAlign="left"; if(pw/d.dayStart.length>38) g.fillText(fmtDay(d.days[i].date,-1).replace(/\(.\)/, W<520?"":"$&"),xx+3,H-9); });
+  // 降雪バー
+  g.fillStyle=col("--s4"); const bw=Math.max(1,pw/n-0.5);
+  d.hourly.forEach((h,i)=>{ if(h.snow>0.02){ const y=ys(h.snow); g.fillRect(x(i),y,bw,T+ph-y); } });
+  // 0℃線と気温
+  g.setLineDash([3,3]); g.strokeStyle=col("--muted"); g.beginPath(); g.moveTo(L,yt(0)); g.lineTo(L+pw,yt(0)); g.stroke(); g.setLineDash([]);
+  g.strokeStyle=col("--bad"); g.lineWidth=1.5; g.beginPath(); let st=false;
+  d.hourly.forEach((h,i)=>{ if(h.t==null) return; const X=x(i)+bw/2,Y=yt(h.t); st?g.lineTo(X,Y):g.moveTo(X,Y); st=true; }); g.stroke();
+}
+function renderAll(){ renderHits(); renderGrid(); }
+
+/* ---------- 起動 ---------- */
+async function start(force){
+  showMsg(MOCK?"デモデータを表示しています（実際の予報ではありません）。":"");
+  $("updated").textContent="読み込み中…";
+  try{ await loadOverview(R.filter(r=>favs.has(r.id)).concat(viewRows()).filter((r,i,a)=>a.indexOf(r)===i),force); }
+  catch(e){ $("updated").textContent="取得失敗"; showMsg("予報データを取得できませんでした（"+esc(e.message)+"）。通信を確認して「最新に更新」を押してください。",true); return; }
+  renderAll(); renderDetail(force,false);
+}
+$("th").value = threshold;
+$("reload").addEventListener("click",()=>{DET={};start(true)});
+$("views").addEventListener("click",e=>{const b=e.target.closest("[data-view]"); if(!b) return; view=b.dataset.view; area="すべて"; sortDay=-1; store.set("view2",view); renderGrid()});
+$("area").addEventListener("change",e=>{area=e.target.value;renderGrid()});
+$("th").addEventListener("change",e=>{const v=parseInt(e.target.value,10); if(v>0){threshold=v;store.set("th",v);renderAll();renderDetail(false,false)}});
+function pick(e){ const b=e.target.closest("[data-id]"); if(!b) return false; selected=b.dataset.id; store.set("sel",selected); renderGrid(); renderDetail(false,true); return true; }
+$("hits").addEventListener("click",pick);
+$("grid").addEventListener("click",e=>{
+  const f=e.target.closest("[data-fav]"); if(f){ const id=f.dataset.fav; favs.has(id)?favs.delete(id):favs.add(id); store.set("favs",[...favs]); loadOverview(R.filter(r=>favs.has(r.id)),false).then(renderHits,()=>{}); renderGrid(); return; }
+  const th=e.target.closest("th.dh"); if(th){ sortDay=+th.dataset.i; renderGrid(); return; }
+  pick(e);
+});
+let rt; window.addEventListener("resize",()=>{clearTimeout(rt);rt=setTimeout(()=>{const r=R.find(x=>x.id===selected); if(r&&DET[r.id]) drawChart(DET[r.id])},150)});
+start(false);
+</script>
+</body>
+</html>
