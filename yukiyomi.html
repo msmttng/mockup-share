@@ -104,6 +104,9 @@ tr.sel td.name button.r{color:var(--accent)}
 .dhead h2{margin:0;font-size:19px}
 .dhead .sub{font-size:12px;color:var(--muted)}
 canvas{width:100%;height:200px;display:block}
+.obs{font-size:13px;margin:0 0 10px;padding:8px 10px;background:var(--surface2);border-radius:8px;display:none}
+.obs b{font-family:var(--f-num);font-size:17px;font-variant-numeric:tabular-nums}
+.obs .n{color:var(--muted);font-size:12px}
 .days{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;margin-top:12px}
 .day{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
 .day.pw{border-color:var(--warn);box-shadow:inset 0 0 0 1px var(--warn)}
@@ -181,11 +184,12 @@ footer a{color:var(--accent)}
       <ul>
         <li>気象データは Open-Meteo 経由で、気象庁（JMA MSM/GSM）・ECMWF・米国 GFS・ドイツ ICON の4モデルを取得しています。表は JMA・ECMWF・GFS の平均、詳細は4モデルの中央値です。</li>
         <li>14日表示では、先の日ほど使えるモデルが減ります（ICON は約7日、JMA は約11日まで）。8日目以降は「降りそうな時期」をつかむ参考値として見てください。</li>
-        <li>降雪量は「降水量 × 雪になる割合 × 雪の軽さ」で標高ごとに計算します。気温は中腹を基準に 100m あたり 0.6℃ で山頂・山麓へ補正します。</li>
-        <li>雪になる割合は 0.5℃以下で100%、2.5℃以上で0%。雪の軽さ（降水1mmあたりのcm）は −10℃以下 1.8、−6℃以下 1.5、−3℃以下 1.2、−1℃以下 1.0、それより高い 0.8 です。</li>
+        <li>降雪量は「降水量 × 雪になる割合 × 雪の軽さ」で標高ごとに計算します。気温は中腹を基準に、その時刻の上空の気温（925・850・700hPa）から求めた実際の下がり方で山頂・山麓へ補正します（上空データがないときだけ 100m あたり 0.6℃）。寒気が入った日や、麓が冷え込む逆転層の日の差が反映されます。</li>
+        <li>雨か雪かは、気温と湿度から求めた湿球温度で判定します（0.3℃以下で100%雪、1.8℃以上で0%）。空気が乾いていると、気温がプラスでも雪になることを反映できます。雪の軽さ（降水1mmあたりのcm）は −10℃以下 1.8、−6℃以下 1.5、−3℃以下 1.2、−1℃以下 1.0、それより高い 0.8 です。</li>
         <li>雪質は降っている時間帯の山頂気温から判定します。−8℃以下「極上ドライ」、−4℃以下「ドライ」、−1℃以下「やや重め」、それより高い「湿雪」。</li>
         <li>信頼度はモデル間のばらつきです。そろっていれば「高」、割れていれば「低」。「低」の日は直前まで様子を見てください。</li>
-        <li>リフト注意は営業時間帯（8〜16時）の最大瞬間風速の目安です。12m/s 以上「注意」、18m/s 以上「運休リスク」。山頂の実際の風はこれより強いことがあります。</li>
+        <li>リフト注意は営業時間帯（8〜16時）の風で判定します。山頂の標高に合わせた上空の風（14m/s 以上「注意」、20m/s 以上「運休リスク」）と、地上の最大瞬間風速（12m/s 以上「注意」、18m/s 以上「運休リスク」）の厳しいほうを採用します。</li>
+        <li>詳細の上に出る「近くの実測」は、気象庁アメダスの最新の積雪深と24時間降雪量です。予報と見比べて、当たり具合を確かめられます。</li>
         <li>「朝イチ」は前日18時〜当日9時に山頂で積もる量です。圧雪前の新雪を狙う目安になります。</li>
         <li>長野 53・北海道 31 か所を収録しています（リフト1〜2本の小規模な町営ゲレンデは未収録）。スキー場の座標と標高は概略値です。ピンポイントの山岳予報ではないので、現地の発表もあわせて確認してください。</li>
       </ul>
@@ -337,13 +341,40 @@ let span = store.get("span",7)===14?14:7;
 let OV = null, DET = {};
 
 /* ---------- 雪の計算 ---------- */
-function snowOf(p,t){ // p: 降水mm/h, t: 気温℃ → cm
-  if(p==null||t==null||p<=0) return 0;
-  const frac = t<=0.5?1 : t>=2.5?0 : (2.5-t)/2;
-  const ratio = t<=-10?1.8 : t<=-6?1.5 : t<=-3?1.2 : t<=-1?1.0 : 0.8;
-  return p*frac*ratio;
+function ratioOf(t){ return t<=-10?1.8 : t<=-6?1.5 : t<=-3?1.2 : t<=-1?1.0 : 0.8; }
+function wetBulb(t,rh){ // 湿球温度（Stull の近似式）
+  return t*Math.atan(0.151977*Math.sqrt(rh+8.313659)) + Math.atan(t+rh) - Math.atan(rh-1.676331) + 0.00391838*Math.pow(rh,1.5)*Math.atan(0.023101*rh) - 4.686035;
 }
-const tAt = (tMid,r,elev)=> tMid==null?null : tMid - LAPSE*(elev-r.mid)/1000;
+function fracOf(t,rh){ // 雪になる割合。湿度があれば湿球温度、なければ気温で判定
+  if(rh==null) return t<=0.5?1 : t>=2.5?0 : (2.5-t)/2;
+  const w = wetBulb(t,Math.max(5,Math.min(100,rh)));
+  return w<=0.3?1 : w>=1.8?0 : (1.8-w)/1.5;
+}
+function lapseOf(s,i,z){ // その時刻の実際の気温減率（℃/km）。上空の気温がなければ固定値
+  const a=s.T9?s.T9[i]:null, b=s.T8?s.T8[i]:null, c=s.T7?s.T7[i]:null;
+  let g=null;
+  if(z<1500 && a!=null && b!=null) g=(a-b)/0.7;
+  else if(b!=null && c!=null) g=(b-c)/1.55;
+  else if(a!=null && b!=null) g=(a-b)/0.7;
+  return g==null ? LAPSE : Math.max(-2,Math.min(9.8,g));
+}
+function tE(s,i,r,e){ const t=s.T[i]; if(t==null) return null; return e===r.mid ? t : t - lapseOf(s,i,(e+r.mid)/2)*(e-r.mid)/1000; }
+function fracE(s,i,r,e){ const t=tE(s,i,r,e); return t==null?null:fracOf(t,s.H?s.H[i]:null); }
+function snowE(s,i,r,e){ // 標高 e での1時間降雪 cm
+  const p=s.P[i], t=tE(s,i,r,e); if(p==null||t==null||p<=0) return 0;
+  return p*fracOf(t,s.H?s.H[i]:null)*ratioOf(t);
+}
+function windAt(s,i,z){ // 標高 z 付近の上空風 m/s（925/850/700hPa から内挿）
+  const a=s.W9?s.W9[i]:null, b=s.W8?s.W8[i]:null, c=s.W7?s.W7[i]:null;
+  if(z<=800) return a!=null?a:b;
+  if(z<=1500) return (a!=null&&b!=null) ? a+(b-a)*(z-800)/700 : (b!=null?b:a);
+  return (b!=null&&c!=null) ? b+(c-b)*Math.min(1,(z-1500)/1550) : (b!=null?b:c);
+}
+function pack(h,m){ const g=v=>{const a=series(h,v,m); return valid(a)?a:null};
+  const T=g("temperature_2m"), P=g("precipitation"); if(!T||!P) return null;
+  return {m,T,P,H:g("relative_humidity_2m"),T9:g("temperature_925hPa"),T8:g("temperature_850hPa"),T7:g("temperature_700hPa"),
+    W9:g("wind_speed_925hPa"),W8:g("wind_speed_850hPa"),W7:g("wind_speed_700hPa"),G:g("wind_gusts_10m"),F:g("freezing_level_height")};
+}
 function series(h,v,m){ return h[v+"_"+m] || h[v] || null; }
 function valid(a){ return !!a && a.some(x=>x!=null); }
 function dayOK(s,d){ let n=0; for(const i of d.idx){ if(s.P[i]!=null&&s.T[i]!=null) n++; } return n>=20; }
@@ -378,16 +409,20 @@ function mockHourly(r,models,seed){ // 動作確認用の合成データ
       const lim=m==="icon_seamless"?180:m==="jma_seamless"?264:9999; if(i>=lim){T[T.length-1]=null;P.push(null);W.push(null);G.push(null);F.push(null);continue;}
       P.push(Math.round(storm*(1.6+mi*0.25)*10)/10); W.push(3+storm*4); G.push(m==="jma_seamless"?null:6+storm*(9+mi*2)); F.push(m.indexOf("gfs")>=0||m.indexOf("icon")>=0?1200+Math.sin(i/30)*500:null);
     }
-    h["temperature_2m_"+m]=T;h["precipitation_"+m]=P;h["wind_speed_10m_"+m]=W;h["wind_gusts_10m_"+m]=G;h["freezing_level_height_"+m]=F;
+    h["temperature_2m_"+m]=T;h["precipitation_"+m]=P;h["wind_gusts_10m_"+m]=G;h["freezing_level_height_"+m]=F;
+    h["relative_humidity_2m_"+m]=T.map((t,i)=>t==null?null:(P[i]>0?95:70));
+    const up=(z,k)=>T.map((t,i)=>t==null?null:Math.round((t-(z-r.mid)/1000*(k+Math.sin(i/9)*2))*10)/10);
+    h["temperature_925hPa_"+m]=up(800,5);h["temperature_850hPa_"+m]=up(1500,5);h["temperature_700hPa_"+m]=up(3050,5.5);
+    h["wind_speed_925hPa_"+m]=W.map(w=>w==null?null:w*1.3);h["wind_speed_850hPa_"+m]=W.map(w=>w==null?null:w*2);h["wind_speed_700hPa_"+m]=W.map(w=>w==null?null:w*3.2);
   });
   return {hourly:h,elevation:r.mid};
 }
 function calcRow(r,h,days){
-  const per = OV_MODELS.map(m=>{ const T=series(h,"temperature_2m",m), P=series(h,"precipitation",m); return valid(T)&&valid(P)?{T,P}:null; }).filter(Boolean);
+  const per = OV_MODELS.map(m=>pack(h,m)).filter(Boolean);
   return days.map(d=>{
     const ok = per.filter(s=>dayOK(s,d));
-    const vals = ok.map(s=>d.idx.reduce((a,i)=>a+snowOf(s.P[i],tAt(s.T[i],r,r.top)),0));
-    const tw = ok.map(s=>{let w=0,sw=0; d.idx.forEach(i=>{const t=tAt(s.T[i],r,r.top),sn=snowOf(s.P[i],t); w+=sn; sw+=sn*t}); return w>0.3?sw/w:null});
+    const vals = ok.map(s=>d.idx.reduce((a,i)=>a+snowE(s,i,r,r.top),0));
+    const tw = ok.map(s=>{let w=0,sw=0; d.idx.forEach(i=>{const t=tE(s,i,r,r.top),sn=snowE(s,i,r,r.top); w+=sn; sw+=sn*t}); return w>0.3?sw/w:null});
     const cm = vals.length? vals.reduce((a,b)=>a+b,0)/vals.length : null;
     const hi = Math.max.apply(null,vals), lo = Math.min.apply(null,vals);
     const split = vals.length>1 && hi-lo > Math.max(5,0.6*hi);
@@ -395,15 +430,15 @@ function calcRow(r,h,days){
   });
 }
 async function loadOverview(list,force){ // list: 必要なスキー場だけ取得してキャッシュに足す
-  if(!OV){ const c=MOCK?null:store.get("ov3",null); OV = c&&c.rows ? c : {dates:null,rows:{},at:0}; }
+  if(!OV){ const c=MOCK?null:store.get("ov4",null); OV = c&&c.rows ? c : {dates:null,rows:{},at:0}; }
   const fresh = id=>{ const x=OV.rows[id]; return x && Date.now()-x.at < CACHE_MIN*60e3; };
   const need = list.filter(r=> force || !fresh(r.id));
-  for(let k=0;k<need.length;k+=30){
-    const part = need.slice(k,k+30);
+  for(let k=0;k<need.length;k+=20){
+    const part = need.slice(k,k+20);
     let arr;
     if(MOCK) arr = part.map(r=>mockHourly(r,OV_MODELS,R.indexOf(r)));
     else arr = await getJSON(API+"?latitude="+part.map(r=>r.lat).join(",")+"&longitude="+part.map(r=>r.lon).join(",")+"&elevation="+part.map(r=>r.mid).join(",")+
-      "&hourly=temperature_2m,precipitation&models="+OV_MODELS.join(",")+"&forecast_days="+DAYS+"&timezone=Asia%2FTokyo");
+      "&hourly=temperature_2m,precipitation,relative_humidity_2m,temperature_925hPa,temperature_850hPa,temperature_700hPa&models="+OV_MODELS.join(",")+"&forecast_days="+DAYS+"&timezone=Asia%2FTokyo");
     if(arr.length!==part.length) throw new Error("スキー場の数と応答の数が合いません");
     const days = dayIndex(arr[0].hourly.time), dates = days.map(d=>d.date);
     if(!OV.dates || OV.dates[0]!==dates[0]){ OV.rows={}; }   // 日付が変わったら古い分は捨てる
@@ -411,7 +446,7 @@ async function loadOverview(list,force){ // list: 必要なスキー場だけ取
     part.forEach((r,ri)=>{ OV.rows[r.id] = {at:Date.now(), days:calcRow(r,arr[ri].hourly,days)}; });
     OV.at = Date.now();
   }
-  if(!MOCK && need.length) store.set("ov3",OV);
+  if(!MOCK && need.length) store.set("ov4",OV);
 }
 async function loadDetail(r,force){
   const c = DET[r.id];
@@ -419,22 +454,21 @@ async function loadDetail(r,force){
   let arr;
   if(MOCK) arr=[mockHourly(r,MODELS.map(m=>m[0]),R.indexOf(r))];
   else arr = await getJSON(API+"?latitude="+r.lat+"&longitude="+r.lon+"&elevation="+r.mid+
-    "&hourly=temperature_2m,precipitation,wind_speed_10m,wind_gusts_10m,freezing_level_height&models="+MODELS.map(m=>m[0]).join(",")+
+    "&hourly=temperature_2m,precipitation,relative_humidity_2m,wind_gusts_10m,freezing_level_height,temperature_925hPa,temperature_850hPa,temperature_700hPa,wind_speed_925hPa,wind_speed_850hPa,wind_speed_700hPa&models="+MODELS.map(m=>m[0]).join(",")+
     "&forecast_days="+DAYS+"&timezone=Asia%2FTokyo&wind_speed_unit=ms");
   const h = arr[0].hourly, time = h.time, days = dayIndex(time);
-  const ms = MODELS.map(([m,label])=>{ const T=series(h,"temperature_2m",m),P=series(h,"precipitation",m); if(!valid(T)||!valid(P)) return null;
-    return {m,label,T,P,G:series(h,"wind_gusts_10m",m),F:series(h,"freezing_level_height",m)}; }).filter(Boolean);
+  const ms = MODELS.map(([m,label])=>{ const x=pack(h,m); if(x) x.label=label; return x; }).filter(Boolean);
   if(!ms.length) throw new Error("使えるモデルのデータがありません");
   const levels = [["山頂",r.top],["中腹",r.mid],["山麓",r.base]];
   // 時間ごとの中央値（グラフ用）
-  const hourly = time.map((_,i)=>({ snow: median(ms.map(s=>(s.P[i]==null||s.T[i]==null)?null:snowOf(s.P[i],tAt(s.T[i],r,r.top)))), t: median(ms.map(s=>tAt(s.T[i],r,r.top))) }));
+  const hourly = time.map((_,i)=>({ snow: median(ms.map(s=>(s.P[i]==null||s.T[i]==null)?null:snowE(s,i,r,r.top))), t: median(ms.map(s=>tE(s,i,r,r.top))) }));
   const out = days.map((d,di)=>{
     const ok = ms.filter(s=>dayOK(s,d));
-    const perModel = ms.map(s=>({label:s.label, cm: ok.indexOf(s)<0 ? null : d.idx.reduce((a,i)=>a+snowOf(s.P[i],tAt(s.T[i],r,r.top)),0)}));
+    const perModel = ms.map(s=>({label:s.label, cm: ok.indexOf(s)<0 ? null : d.idx.reduce((a,i)=>a+snowE(s,i,r,r.top),0)}));
     const lv = levels.map(([k,e])=>{
-      const cm = median(ok.map(s=>d.idx.reduce((a,i)=>a+snowOf(s.P[i],tAt(s.T[i],r,e)),0)));
-      const ts = d.idx.map(i=>median(ok.map(s=>tAt(s.T[i],r,e)))).filter(x=>x!=null);
-      const rain = median(ok.map(s=>d.idx.reduce((a,i)=>{const t=tAt(s.T[i],r,e); return a+(s.P[i]>0&&t>1.5?s.P[i]:0)},0)));
+      const cm = median(ok.map(s=>d.idx.reduce((a,i)=>a+snowE(s,i,r,e),0)));
+      const ts = d.idx.map(i=>median(ok.map(s=>tE(s,i,r,e)))).filter(x=>x!=null);
+      const rain = median(ok.map(s=>d.idx.reduce((a,i)=>{const f=fracE(s,i,r,e); return a+(s.P[i]>0&&f!=null?s.P[i]*(1-f):0)},0)));
       return {k,e,cm,tmin:ts.length?Math.min.apply(null,ts):null,tmax:ts.length?Math.max.apply(null,ts):null,rain};
     });
     const top = lv[0].cm, vals = perModel.map(p=>p.cm).filter(x=>x!=null);
@@ -442,16 +476,45 @@ async function loadDetail(r,force){
     const conf = vals.length<2?["—",""] : spread<=Math.max(4,0.5*top)?["高","good"] : spread<=Math.max(8,1.0*top)?["中","warn"] : ["低","bad"];
     let w=0,sw=0; d.idx.forEach(i=>{const x=hourly[i]; if(x.snow>0){w+=x.snow;sw+=x.snow*x.t}});
     const q = quality(w>0.3?sw/w:null);
-    const gusts = d.idx.filter(i=>{const hh=+time[i].slice(11,13);return hh>=8&&hh<=16}).map(i=>median(ms.map(s=>s.G?s.G[i]:null))).filter(x=>x!=null);
+    const op = d.idx.filter(i=>{const hh=+time[i].slice(11,13);return hh>=8&&hh<=16});
+    const gusts = op.map(i=>median(ms.map(s=>s.G?s.G[i]:null))).filter(x=>x!=null);
     const gust = gusts.length?Math.max.apply(null,gusts):null;
-    const lift = gust==null?["—",""] : gust>=18?["運休リスク","bad"] : gust>=12?["注意","warn"] : ["問題なし","good"];
+    const tops = op.map(i=>median(ms.map(s=>windAt(s,i,r.top)))).filter(x=>x!=null);
+    const wtop = tops.length?Math.max.apply(null,tops):null;
+    const lv2 = Math.max(gust==null?-1:gust>=18?2:gust>=12?1:0, wtop==null?-1:wtop>=20?2:wtop>=14?1:0);
+    const lift = lv2<0?["—",""] : lv2===2?["運休リスク","bad"] : lv2===1?["注意","warn"] : ["問題なし","good"];
     // 朝イチ: 前日18時〜当日9時
     let am=null; const a0=d.idx[0]-6, a1=d.idx[0]+9; if(a0>=0){ am=0; for(let i=a0;i<a1&&i<hourly.length;i++) am+=hourly[i].snow||0; }
     const fz = median(d.idx.map(i=>median(ms.map(s=>s.F?s.F[i]:null))));
-    return {date:d.date, top, lv, perModel, conf, q, gust, lift, am, fz, nOk: ok.length};
+    return {date:d.date, top, lv, perModel, conf, q, gust, wtop, lift, am, fz, nOk: ok.length};
   });
   const res = {at:Date.now(), time, hourly, days:out, nModels:ms.length, dayStart:days.map(d=>d.idx[0])};
   DET[r.id]=res; return res;
+}
+
+/* ---------- アメダス実測（気象庁） ---------- */
+let AM=null;
+async function loadAmedas(){
+  if(AM && Date.now()-AM.at < 30*60e3) return AM;
+  if(MOCK){ AM={at:Date.now(),hh:"16",st:[{name:"デモ観測点",lat:36.73,lon:138.45,alt:600,depth:35,s24:12}]}; return AM; }
+  const B="https://www.jma.go.jp/bosai/amedas/";
+  const t=(await (await fetch(B+"data/latest_time.txt")).text()).trim();   // 例 2026-11-16T16:40:00+09:00
+  const key=t.slice(0,4)+t.slice(5,7)+t.slice(8,10)+t.slice(11,13)+"0000";
+  const [m,tb]=await Promise.all([fetch(B+"data/map/"+key+".json").then(x=>x.json()), AM&&AM.tb?AM.tb:fetch(B+"const/amedastable.json").then(x=>x.json())]);
+  const st=[];
+  for(const id in m){ const o=m[id], c=tb[id]; if(!c||!o.snow) continue;
+    st.push({name:c.kjName,lat:c.lat[0]+c.lat[1]/60,lon:c.lon[0]+c.lon[1]/60,alt:c.alt,depth:o.snow[0],s24:o.snow24h?o.snow24h[0]:null}); }
+  AM={at:Date.now(),hh:t.slice(11,13),st,tb}; return AM;
+}
+function distKm(a,b,c,d){ const R=6371,x=(d-b)*Math.PI/180*Math.cos((a+c)/2*Math.PI/180),y=(c-a)*Math.PI/180; return R*Math.sqrt(x*x+y*y); }
+async function renderAmedas(r){
+  const box=$("amedas"); if(!box) return;
+  let a; try{ a=await loadAmedas(); }catch(e){ return; }      // 取れなければ何も出さない
+  if(r.id!==selected || !$("amedas")) return;
+  const near=a.st.map(s=>({s,km:distKm(r.lat,r.lon,s.lat,s.lon)})).filter(x=>x.km<=35).sort((x,y)=>x.km-y.km).slice(0,2);
+  const el=$("amedas"); el.style.display="block";
+  el.innerHTML = '<span class="n">近くの実測（気象庁アメダス '+a.hh+'時）</span><br>'+(near.length ? near.map(x=>esc(x.s.name)+' <span class="n">標高'+Math.round(x.s.alt)+'m・'+Math.round(x.km)+'km</span>　積雪 <b>'+(x.s.depth==null?"—":x.s.depth)+'</b>cm　24時間降雪 <b>'+(x.s.s24==null?"—":x.s.s24)+'</b>cm').join("<br>")+'<br><span class="n">観測点は麓の町にあることが多く、ゲレンデより少なめに出ます。予報の当たり外れを確かめる目安にしてください。</span>'
+    : '<span class="n">35km 以内に積雪を観測しているアメダスがありません。</span>');
 }
 
 /* ---------- 描画 ---------- */
@@ -515,19 +578,22 @@ async function renderDetail(force,scroll){
   const days = d.days.slice(0,span);
   const maxTop = Math.max(10, ...days.map(x=>x.lv[0].cm||0));
   box.innerHTML = '<div class="dhead"><h2>'+esc(r.name)+'</h2><span class="sub">'+r.region+' '+r.area+' ・ 山頂 '+r.top+'m ／ 中腹 '+r.mid+'m ／ 山麓 '+r.base+'m ・ '+d.nModels+'モデルの中央値</span></div>'+
+    '<div id="amedas" class="obs"></div>'+
     '<canvas id="chart" role="img" aria-label="山頂の1時間ごとの降雪量と気温"></canvas>'+
     '<div class="legend"><span><i style="background:var(--s4)"></i>山頂の降雪（cm/時）</span><span><i style="background:var(--bad);height:3px;vertical-align:3px"></i>山頂の気温（℃）</span></div>'+
     '<div class="days">'+days.map((x,i)=>{
       const mm = Math.max(1,...x.perModel.map(p=>p.cm||0));
       return '<div class="day'+(x.top>=threshold?" pw":"")+'"><div class="hd"><b>'+fmtDay(x.date,i)+'</b><span class="am">朝イチ '+(x.am==null?"—":r0(x.am)+"cm")+'</span></div>'+
       '<div class="big">'+r0(x.top)+'<span>cm（山頂）</span></div>'+
-      '<div class="pills"><span class="pill '+x.q[1]+'">雪質 '+x.q[0]+'</span><span class="pill '+x.conf[1]+'">信頼度 '+x.conf[0]+(x.nOk<d.nModels?"（"+x.nOk+"モデル）":"")+'</span>'+(i>=7?'<span class="pill warn">先の予報</span>':'')+'<span class="pill '+x.lift[1]+'">リフト '+x.lift[0]+(x.gust!=null?" "+r0(x.gust)+"m/s":"")+'</span></div>'+
+      '<div class="pills"><span class="pill '+x.q[1]+'">雪質 '+x.q[0]+'</span><span class="pill '+x.conf[1]+'">信頼度 '+x.conf[0]+(x.nOk<d.nModels?"（"+x.nOk+"モデル）":"")+'</span>'+(i>=7?'<span class="pill warn">先の予報</span>':'')+'<span class="pill '+x.lift[1]+'">リフト '+x.lift[0]+'</span></div>'+
+      '<div class="am">風（8〜16時の最大）山頂付近 '+(x.wtop==null?"—":r0(x.wtop)+"m/s")+' ／ 地上の突風 '+(x.gust==null?"—":r0(x.gust)+"m/s")+'</div>'+
       '<div class="lv">'+x.lv.map(l=>'<span class="k">'+l.k+'</span><span class="bar"><i style="width:'+Math.min(100,(l.cm||0)/maxTop*100)+'%"></i></span><span class="v">'+r0(l.cm)+'cm</span><span class="t">'+r0(l.tmin)+'〜'+r0(l.tmax)+'℃'+(l.rain>=1?" 雨"+r0(l.rain)+"mm":"")+'</span>').join("")+'</div>'+
       '<div class="models">'+x.perModel.map(p=>'<span class="k">'+p.label+'</span><span class="bar"><i style="width:'+((p.cm||0)/mm*100)+'%;background:var(--muted)"></i></span><span class="v">'+(p.cm==null?"期間外":r0(p.cm))+'</span>').join("")+'</div>'+
       (x.fz!=null?'<div class="am">0℃ の高さ 約 '+Math.round(x.fz/50)*50+'m</div>':"")+'</div>';
     }).join("")+'</div>';
   drawChart(d);
   renderAsk();
+  renderAmedas(r);
   if(scroll) box.scrollIntoView({behavior:"smooth",block:"start"});
 }
 function drawChart(d){
@@ -569,7 +635,7 @@ function buildPrompt(){
   const line = r=> r.name+"("+r.top+"m): "+OV.rows[r.id].days.slice(0,span).map(c=>c.cm==null?"-":Math.round(c.cm)+(c.split&&c.cm>=3?"?":"")).join(" ");
   if(favRows.length) t += "[お気に入り]\n"+favRows.map(line).join("\n")+"\n";
   if(viewTop.length) t += "["+view+(area==="すべて"?"":" "+area)+" 降雪上位]\n"+viewTop.map(line).join("\n")+"\n";
-  if(det) t += "["+sel.name+" 詳細] "+det.days.slice(0,Math.min(span,7)).map(x=>md(x.date)+" 山頂"+r0(x.top)+"cm/山麓"+r0(x.lv[2].cm)+"cm 山頂"+r0(x.lv[0].tmin)+"〜"+r0(x.lv[0].tmax)+"℃ 雪質"+x.q[0]+" 信頼度"+x.conf[0]+(x.gust!=null?" 突風"+r0(x.gust)+"m/s":"")).join(" / ")+"\n";
+  if(det) t += "["+sel.name+" 詳細] "+det.days.slice(0,Math.min(span,7)).map(x=>md(x.date)+" 山頂"+r0(x.top)+"cm/山麓"+r0(x.lv[2].cm)+"cm 山頂"+r0(x.lv[0].tmin)+"〜"+r0(x.lv[0].tmax)+"℃ 雪質"+x.q[0]+" 信頼度"+x.conf[0]+(x.wtop!=null?" 山頂風"+r0(x.wtop)+"m/s":"")+(x.gust!=null?" 突風"+r0(x.gust)+"m/s":"")).join(" / ")+"\n";
   return t;
 }
 function syncAsk(){ const p=buildPrompt(); $("askprev").value=p; $("askgo").href="https://claude.ai/new?q="+encodeURIComponent(p); }
