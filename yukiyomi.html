@@ -110,7 +110,8 @@ tr.sel td.name button.r{color:var(--accent)}
 .tmap{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
 .tmap h3{font-size:15px;margin:0 0 8px}
 .tmwrap{margin-top:8px;border:1px solid var(--line);border-radius:10px;overflow:hidden;max-width:768px}
-#tmcv{width:100%;height:auto;display:block;touch-action:manipulation;cursor:crosshair}
+#tmcv{width:100%;height:auto;display:block;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.tmwrap{background:var(--surface2)}
 .chip.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .obs{font-size:13px;margin:0 0 10px;padding:8px 10px;background:var(--surface2);border-radius:8px;display:none}
 .obs b{font-family:var(--f-num);font-size:17px;font-variant-numeric:tabular-nums}
@@ -519,30 +520,40 @@ async function loadDetail(r,force){
 
 /* ---------- 地形マップ（国土地理院の標高タイル＋風向き） ---------- */
 const TZ=13, TS=768, DIRS=["北","北北東","北東","東北東","東","東南東","南東","南南東","南","南南西","南西","西南西","西","西北西","北西","北北西"];
-let TM={}, tmDay=0, tmCur=null;
-function tileImg(url){ return new Promise((ok,ng)=>{ const im=new Image(); im.crossOrigin="anonymous"; im.onload=()=>ok(im); im.onerror=()=>ng(new Error("地図タイルを取得できません")); im.src=url; }); }
-async function loadTerrain(r){
-  if(TM[r.id]) return TM[r.id];
+let TM={key:null,t:null}, tmDay=0, tmCur=null;
+const TILES={};
+function tileImg(url){ return TILES[url] || (TILES[url]=new Promise((ok,ng)=>{ const im=new Image(); im.crossOrigin="anonymous"; im.onload=()=>ok(im); im.onerror=()=>{ delete TILES[url]; ng(new Error("地図タイルを取得できません")); }; im.src=url; })); }
+let TMOFF={};   // スキー場ごとの表示位置のずれ（画素）
+async function loadTerrain(r,ox,oy){
+  const key=r.id+":"+ox+":"+oy; if(TM.key===key) return TM.t;
   const n=Math.pow(2,TZ), latR=r.lat*Math.PI/180;
-  const cx=(r.lon+180)/360*n*256, cy=(1-Math.log(Math.tan(latR)+1/Math.cos(latR))/Math.PI)/2*n*256;
+  const cx=(r.lon+180)/360*n*256+ox, cy=(1-Math.log(Math.tan(latR)+1/Math.cos(latR))/Math.PI)/2*n*256+oy;
   const x0=Math.round(cx-TS/2), y0=Math.round(cy-TS/2), mpp=156543.03*Math.cos(latR)/n;
   const dem=new Float32Array(TS*TS), base=document.createElement("canvas"); base.width=base.height=TS;
   if(MOCK){
-    for(let y=0;y<TS;y++) for(let x=0;x<TS;x++){ const a=Math.hypot(x-430,y-330), b=Math.hypot(x-250,y-520); dem[y*TS+x]=700+1300*Math.exp(-a*a/40000)+700*Math.exp(-b*b/22000); }
+    for(let y=0;y<TS;y++) for(let x=0;x<TS;x++){ const a=Math.hypot(x+ox-560,y+oy-250), b=Math.hypot(x+ox-250,y+oy-520); dem[y*TS+x]=700+1300*Math.exp(-a*a/40000)+700*Math.exp(-b*b/22000); }
     const g=base.getContext("2d"); g.fillStyle="#eef1f5"; g.fillRect(0,0,TS,TS);
   } else {
     const dc=document.createElement("canvas"); dc.width=dc.height=TS; const dg=dc.getContext("2d",{willReadFrequently:true}), bg=base.getContext("2d");
+    bg.fillStyle="#eef1f5"; bg.fillRect(0,0,TS,TS);
     const jobs=[];
     for(let ty=Math.floor(y0/256); ty<=Math.floor((y0+TS-1)/256); ty++) for(let tx=Math.floor(x0/256); tx<=Math.floor((x0+TS-1)/256); tx++){
       const px=tx*256-x0, py=ty*256-y0;
-      jobs.push(tileImg("https://cyberjapandata.gsi.go.jp/xyz/dem_png/"+TZ+"/"+tx+"/"+ty+".png").then(im=>dg.drawImage(im,px,py)));
+      jobs.push(tileImg("https://cyberjapandata.gsi.go.jp/xyz/dem_png/"+TZ+"/"+tx+"/"+ty+".png").then(im=>dg.drawImage(im,px,py),()=>{ dg.fillStyle="rgb(128,0,0)"; dg.fillRect(px,py,256,256); }));   // 海などタイルがない所は「データなし」
       jobs.push(tileImg("https://cyberjapandata.gsi.go.jp/xyz/pale/"+TZ+"/"+tx+"/"+ty+".png").then(im=>bg.drawImage(im,px,py),()=>{}));
     }
     await Promise.all(jobs);
-    const d=dg.getImageData(0,0,TS,TS).data;
-    for(let i=0;i<TS*TS;i++){ const v=d[i*4]*65536+d[i*4+1]*256+d[i*4+2]; dem[i] = v===8388608 ? NaN : (v<8388608 ? v*0.01 : (v-16777216)*0.01); }
+    const d=dg.getImageData(0,0,TS,TS).data; let okN=0;
+    for(let i=0;i<TS*TS;i++){ const v=d[i*4]*65536+d[i*4+1]*256+d[i*4+2]; if(d[i*4+3]===0||v===8388608){ dem[i]=NaN; } else { dem[i] = v<8388608 ? v*0.01 : (v-16777216)*0.01; okN++; } }
+    if(!okN) throw new Error("この範囲の標高データがありません");
   }
-  return TM[r.id]={dem,base,mpp};
+  TM.key=key; return TM.t={dem,base,mpp,rx:TS/2-ox,ry:TS/2-oy};
+}
+function mountainOffset(r,t){ // スキー場の座標が麓にあるとき、中腹より上の斜面の重心へ地図を寄せる
+  const R=3500/t.mpp; let sx=0,sy=0,n=0;
+  for(let y=0;y<TS;y+=4) for(let x=0;x<TS;x+=4){ const dx=x-TS/2, dy=y-TS/2; if(dx*dx+dy*dy>R*R) continue; const z=t.dem[y*TS+x]; if(z>=r.mid){ sx+=dx; sy+=dy; n++; } }
+  if(n<30) return [0,0];
+  const ox=Math.round(sx/n), oy=Math.round(sy/n); return Math.hypot(ox,oy)<40 ? [0,0] : [ox,oy];
 }
 function terrainSnow(t,day){ // 画素ごとの推定降雪 cm と補正係数
   const {dem,mpp}=t, out=new Float32Array(TS*TS), fac=new Float32Array(TS*TS);
@@ -577,7 +588,7 @@ function drawTerrain(r,t,day){
   }
   const tmp=document.createElement("canvas"); tmp.width=tmp.height=TS; tmp.getContext("2d").putImageData(im,0,0); g.drawImage(tmp,0,0);
   // スキー場の位置・縮尺・風向き
-  g.fillStyle="#fff"; g.strokeStyle="#16202e"; g.lineWidth=3; g.beginPath(); g.arc(TS/2,TS/2,7,0,6.3); g.fill(); g.stroke();
+  if(t.rx>-10&&t.ry>-10&&t.rx<TS+10&&t.ry<TS+10){ g.fillStyle="#fff"; g.strokeStyle="#16202e"; g.lineWidth=3; g.beginPath(); g.arc(t.rx,t.ry,7,0,6.3); g.fill(); g.stroke(); }
   const km=1000/mpp; g.fillStyle="rgba(255,255,255,.85)"; g.fillRect(16,TS-44,km+16,30); g.fillStyle="#16202e"; g.fillRect(24,TS-24,km,4); g.font="bold 18px sans-serif"; g.textBaseline="alphabetic"; g.fillText("1km",24,TS-28);
   g.fillStyle="rgba(255,255,255,.85)"; g.fillRect(TS-250,TS-30,250,30); g.fillStyle="#16202e"; g.font="14px sans-serif"; g.fillText("地図・標高: 国土地理院（地理院タイル）",TS-244,TS-10);
   if(day.wdir!=null){
@@ -595,18 +606,36 @@ function setupTmap(r,d){
   if(tmDay>=days.length || !tmCur || tmCur.r!==r){ tmDay=0; let best=-1; days.forEach((x,i)=>{ if((x.top||0)>best){best=x.top||0; tmDay=i;} }); }
   const chips=()=>{ $("tmdays").innerHTML=days.map((x,i)=>'<button type="button" class="chip'+(i===tmDay?" on":"")+'" data-i="'+i+'">'+md(x.date)+" "+r0(x.top)+'cm</button>').join(""); $("tminfo").textContent=tmInfo(days[tmDay]); };
   chips();
-  const show=async()=>{
-    const b=$("tmgo"); b.disabled=true; b.textContent="地形データを読み込み中…";
-    try{ const t=await loadTerrain(r); if(r.id!==selected||!$("tmcv")) return; $("tmwrap").hidden=false; b.hidden=true; drawTerrain(r,t,days[tmDay]);
-      $("tmleg").hidden=false; $("tmleg").innerHTML=[["1〜4",1],["5〜9",2],["10〜19",3],["20〜29",4],["30〜49",5],["50〜",6]].map(x=>'<span><i style="background:var(--s'+x[1]+')"></i>'+x[0]+'cm</span>').join("")+'<span>白丸 = スキー場の中心</span><span>地図をタップするとその地点の値</span>';
-      $("tmread").textContent="約"+Math.round(TS*t.mpp/100)/10+"km 四方。風向きと地形から計算した目安で、実測による検証はしていません。";
-    }catch(e){ b.disabled=false; b.textContent="地形マップを表示"; $("tmread").textContent="地形データを取得できませんでした（"+e.message+"）。"; }
+  const cv=$("tmcv"), note="指でドラッグすると地図を動かせます。タップでその地点の値。風向きと地形から計算した目安で、実測による検証はしていません。";
+  let busy=false;
+  const render=async()=>{   // 現在のずれで読み込んで描く
+    if(busy) return; busy=true;
+    try{
+      let first=!TMOFF[r.id]; if(first) TMOFF[r.id]=[0,0];
+      let t=await loadTerrain(r,TMOFF[r.id][0],TMOFF[r.id][1]);
+      if(first){ const o=mountainOffset(r,t); if(o[0]||o[1]){ TMOFF[r.id]=o; t=await loadTerrain(r,o[0],o[1]); } }
+      if(r.id!==selected||!$("tmcv")) return;
+      $("tmwrap").hidden=false; $("tmgo").hidden=true; $("tmback").hidden=false; drawTerrain(r,t,days[tmDay]); cv.style.transform="";
+      $("tmleg").hidden=false; $("tmleg").innerHTML=[["1〜4",1],["5〜9",2],["10〜19",3],["20〜29",4],["30〜49",5],["50〜",6]].map(x=>'<span><i style="background:var(--s'+x[1]+')"></i>'+x[0]+'cm</span>').join("")+'<span>白丸 = スキー場の登録位置</span>';
+      $("tmread").textContent=note;
+    }catch(e){ cv.style.transform=""; const b=$("tmgo"); b.disabled=false; b.textContent="地形マップを表示"; $("tmread").textContent="地形データを取得できませんでした（"+e.message+"）。"; }
+    finally{ busy=false; }
   };
-  $("tmgo").addEventListener("click",show);
-  $("tmdays").addEventListener("click",e=>{ const c=e.target.closest(".chip"); if(!c) return; tmDay=+c.dataset.i; chips(); if(TM[r.id]&&!$("tmwrap").hidden) drawTerrain(r,TM[r.id],days[tmDay]); });
-  $("tmcv").addEventListener("click",e=>{ if(!tmCur) return; const b=e.target.getBoundingClientRect(), x=Math.floor((e.clientX-b.left)/b.width*TS), y=Math.floor((e.clientY-b.top)/b.height*TS), i=y*TS+x, z=tmCur.t.dem[i];
-    $("tmread").textContent = isNaN(z) ? "この地点は標高データがありません。" : "タップした地点: 標高 "+Math.round(z)+"m ／ 推定 "+r0(tmCur.res.out[i])+"cm（風による補正 ×"+tmCur.res.fac[i].toFixed(2)+"）"; });
-  if(TM[r.id]) show();
+  $("tmgo").addEventListener("click",()=>{ const b=$("tmgo"); b.disabled=true; b.textContent="地形データを読み込み中…"; render(); });
+  $("tmback").addEventListener("click",()=>{ delete TMOFF[r.id]; render(); });
+  $("tmdays").addEventListener("click",e=>{ const c=e.target.closest(".chip"); if(!c) return; tmDay=+c.dataset.i; chips(); if(tmCur&&tmCur.r===r&&!$("tmwrap").hidden) drawTerrain(r,tmCur.t,days[tmDay]); });
+  // ドラッグで移動、動かさずに離せばタップ
+  let st=null;
+  cv.addEventListener("pointerdown",e=>{ if(busy||!tmCur) return; st={x:e.clientX,y:e.clientY,dx:0,dy:0}; try{cv.setPointerCapture(e.pointerId)}catch(_){} });
+  cv.addEventListener("pointermove",e=>{ if(!st) return; st.dx=e.clientX-st.x; st.dy=e.clientY-st.y; if(Math.hypot(st.dx,st.dy)>6) cv.style.transform="translate("+st.dx+"px,"+st.dy+"px)"; });
+  const end=e=>{ if(!st) return; const m=st; st=null; const b=cv.getBoundingClientRect(), k=TS/b.width;
+    if(Math.hypot(m.dx,m.dy)<=6){ cv.style.transform="";
+      const x=Math.floor((e.clientX-b.left)*k), y=Math.floor((e.clientY-b.top)*k); if(x<0||y<0||x>=TS||y>=TS) return; const i=y*TS+x, z=tmCur.t.dem[i];
+      $("tmread").textContent = isNaN(z) ? "この地点は標高データがありません。" : "タップした地点: 標高 "+Math.round(z)+"m ／ 推定 "+r0(tmCur.res.out[i])+"cm（風による補正 ×"+tmCur.res.fac[i].toFixed(2)+"）";
+      return; }
+    const o=TMOFF[r.id]||[0,0]; TMOFF[r.id]=[Math.round(o[0]-m.dx*k),Math.round(o[1]-m.dy*k)]; $("tmread").textContent="読み込み中…"; render(); };
+  cv.addEventListener("pointerup",end); cv.addEventListener("pointercancel",()=>{ st=null; cv.style.transform=""; });
+  if(tmCur&&tmCur.r===r) render();
 }
 
 /* ---------- アメダス実測（気象庁） ---------- */
@@ -709,7 +738,7 @@ async function renderDetail(force,scroll){
       (x.fz!=null?'<div class="am">0℃ の高さ 約 '+Math.round(x.fz/50)*50+'m</div>':"")+'</div>';
     }).join("")+'</div>'+
     '<div class="tmap"><h3>地形マップ（風向きから見た積もりやすさ）</h3><div class="chips" id="tmdays"></div><div id="tminfo" class="am"></div>'+
-    '<button type="button" class="btn" id="tmgo">地形マップを表示</button><div class="tmwrap" id="tmwrap" hidden><canvas id="tmcv" width="768" height="768"></canvas></div>'+
+    '<button type="button" class="btn" id="tmgo">地形マップを表示</button><button type="button" class="btn" id="tmback" hidden>最初の位置に戻す</button><div class="tmwrap" id="tmwrap" hidden><canvas id="tmcv" width="768" height="768"></canvas></div>'+
     '<div id="tmread" class="am"></div><div class="legend" id="tmleg" hidden></div></div>';
   setupTmap(r,d);
   drawChart(d);
