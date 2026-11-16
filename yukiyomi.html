@@ -339,7 +339,7 @@ const VIEWS = ["お気に入り","長野","北海道","その他"];
 const MODELS = [["jma_seamless","JMA 気象庁"],["ecmwf_ifs025","ECMWF 欧州"],["gfs_seamless","GFS 米国"],["icon_seamless","ICON ドイツ"]];
 const OV_MODELS = ["jma_seamless","ecmwf_ifs025","gfs_seamless"];
 const API = "https://api.open-meteo.com/v1/forecast";
-const DAYS = 14, LAPSE = 6.0, CACHE_MIN = 60;
+const DAYS = 14, LAPSE = 6.0, CACHE_MIN = 180;
 const MOCK = /[?&]mock=1/.test(location.search);
 const WD = ["日","月","火","水","木","金","土"];
 const md = (date)=>{ const d=new Date(date+"T00:00:00"); return (d.getMonth()+1)+"/"+d.getDate()+WD[d.getDay()]; };
@@ -417,9 +417,14 @@ const r0 = x=> x==null?"—": Math.round(x).toString();
 const esc = s=> String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 /* ---------- 取得 ---------- */
-async function getJSON(url){
-  const res = await fetch(url);
+async function getJSON(url){ // 25秒で打ち切り、失敗の理由を日本語で返す
+  const ac = new AbortController(), to = setTimeout(()=>ac.abort(),25000);
+  let res;
+  try{ res = await fetch(url,{signal:ac.signal}); }
+  catch(e){ throw new Error(e.name==="AbortError" ? "気象データの提供元（Open-Meteo）が25秒たっても応答しません" : "気象データの提供元（Open-Meteo）につながりません"); }
+  finally{ clearTimeout(to); }
   const j = await res.json().catch(()=>null);
+  if(res.status===429) throw new Error("気象データの利用回数の上限に達しました。しばらく待ってください");
   if(!res.ok || !j || j.error) throw new Error((j&&j.reason)||("HTTP "+res.status));
   return Array.isArray(j)?j:[j];
 }
@@ -463,8 +468,15 @@ async function loadOverview(list,force){ // list: 必要なスキー場だけ取
     const part = need.slice(k,k+20);
     let arr;
     if(MOCK) arr = part.map(r=>mockHourly(r,OV_MODELS,R.indexOf(r)));
-    else arr = await getJSON(API+"?latitude="+part.map(r=>r.lat).join(",")+"&longitude="+part.map(r=>r.lon).join(",")+"&elevation="+part.map(r=>r.mid).join(",")+
-      "&hourly=temperature_2m,precipitation,relative_humidity_2m,temperature_925hPa,temperature_850hPa,temperature_700hPa&models="+OV_MODELS.join(",")+"&forecast_days="+DAYS+"&timezone=Asia%2FTokyo");
+    else {
+      try{ arr = await getJSON(API+"?latitude="+part.map(r=>r.lat).join(",")+"&longitude="+part.map(r=>r.lon).join(",")+"&elevation="+part.map(r=>r.mid).join(",")+
+        "&hourly=temperature_2m,precipitation,relative_humidity_2m,temperature_925hPa,temperature_850hPa,temperature_700hPa&models="+OV_MODELS.join(",")+"&forecast_days="+DAYS+"&timezone=Asia%2FTokyo"); }
+      catch(e){ // 取れないときは、前回取得した分が残っていればそれを出す
+        if(list.every(r=>OV.rows[r.id]) && OV.dates){ OV.stale = e.message; return; }
+        throw e;
+      }
+    }
+    OV.stale = null;
     if(arr.length!==part.length) throw new Error("スキー場の数と応答の数が合いません");
     const days = dayIndex(arr[0].hourly.time), dates = days.map(d=>d.date);
     if(!OV.dates || OV.dates[0]!==dates[0]){ OV.rows={}; }   // 日付が変わったら古い分は捨てる
@@ -728,7 +740,8 @@ async function renderGrid(){
   $("legend").innerHTML = [["1〜4",1],["5〜9",2],["10〜19",3],["20〜29",4],["30〜49",5],["50〜",6]].map(x=>'<span><i style="background:var(--s'+x[1]+')"></i>'+x[0]+'cm</span>').join("")+
     '<span><i style="box-shadow:inset 0 0 0 2px var(--warn);background:transparent"></i>パウダー基準以上</span><span>? = モデルの予想が割れている</span><span>日付を押すとその日で並べ替え</span>'+(span>7?'<span>8日目以降は精度が下がる参考値</span>':'');
   $("span7").classList.toggle("on",span===7); $("span14").classList.toggle("on",span===14);
-  $("updated").textContent = "取得 "+new Date(OV.at).toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"});
+  $("updated").textContent = "取得 "+new Date(OV.at).toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})+(OV.stale?"（更新できず前回分）":"");
+  if(OV.stale) showMsg("最新の予報を取得できなかったため、前回取得した予報を表示しています（"+esc(OV.stale)+"）。",true);
 }
 async function renderDetail(force,scroll){
   const r = R.find(x=>x.id===selected) || R[0], box=$("detail");
