@@ -10,6 +10,8 @@
 <meta name="theme-color" content="#f3f5f8" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0e141c" media="(prefers-color-scheme: dark)">
 <meta name="format-detection" content="telephone=no">
+<link rel="icon" type="image/svg+xml" href="yukiyomi_icon.svg">
+<link rel="apple-touch-icon" href="yukiyomi_icon_180.png">
 <title>ユキヨミ 国内降雪予報</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -47,6 +49,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:1
 .wrap{max-width:1080px;margin:0 auto;padding:calc(16px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) calc(48px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));display:flex;flex-direction:column;gap:20px}
 header.top{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 16px;justify-content:space-between}
 h1{font-size:24px;margin:0;letter-spacing:.04em}
+h1 .logo{display:block;height:54px;width:auto;margin:-10px 0 -6px -14px;color:var(--ink)}
 h1 small{display:block;font-size:12px;font-weight:400;color:var(--muted);letter-spacing:0}
 h2{font-size:16px;margin:0 0 10px;text-wrap:balance}
 .meta{font-size:12px;color:var(--muted);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
@@ -103,7 +106,12 @@ tr.sel td.name button.r{color:var(--accent)}
 .dhead{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;margin-bottom:8px}
 .dhead h2{margin:0;font-size:19px}
 .dhead .sub{font-size:12px;color:var(--muted)}
-canvas{width:100%;height:200px;display:block}
+#chart{width:100%;height:200px;display:block}
+.tmap{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.tmap h3{font-size:15px;margin:0 0 8px}
+.tmwrap{margin-top:8px;border:1px solid var(--line);border-radius:10px;overflow:hidden;max-width:768px}
+#tmcv{width:100%;height:auto;display:block;touch-action:manipulation;cursor:crosshair}
+.chip.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .obs{font-size:13px;margin:0 0 10px;padding:8px 10px;background:var(--surface2);border-radius:8px;display:none}
 .obs b{font-family:var(--f-num);font-size:17px;font-variant-numeric:tabular-nums}
 .obs .n{color:var(--muted);font-size:12px}
@@ -144,7 +152,7 @@ footer a{color:var(--accent)}
 <body>
 <div class="wrap">
   <header class="top">
-    <h1>ユキヨミ<small>国内スキー場の降雪予報 ・ 4つの気象モデルを比べて読む</small></h1>
+    <h1><svg class="logo" viewBox="0 0 547.23 176.4" role="img" aria-label="ユキヨミ"><g transform="translate(38.2,38.2)"><g fill="none" stroke="currentColor" stroke-width="9.02" stroke-linecap="butt" stroke-linejoin="miter"><g transform="translate(0,0)"><path d="M23.6,38.2 H67.8 V76.4"/><line x1="10.6" y1="76.4" x2="89.4" y2="76.4"/></g><g transform="translate(123.61,0)"><line x1="14.6" y1="38.2" x2="85.4" y2="38.2"/><line x1="8.6" y1="61.8" x2="91.4" y2="61.8"/><line x1="42.2" y1="10.6" x2="57.8" y2="89.4"/></g><g transform="translate(247.22,0)"><path d="M19.6,23.6 H76.4 V76.4 H19.6"/><line x1="27.6" y1="50.0" x2="76.4" y2="50.0"/></g><g transform="translate(370.83,0)"><line x1="31.5" y1="17.8" x2="68.5" y2="27.4" stroke="#6fa9ee"/><line x1="26.5" y1="41.9" x2="73.5" y2="54.1" stroke="#3a78dd"/><line x1="20.1" y1="70.6" x2="79.9" y2="86.2" stroke="#3b3fc4"/></g></g></g></svg><small>国内スキー場の降雪予報 ・ 4つの気象モデルを比べて読む</small></h1>
     <div class="meta"><span id="updated">読み込み中…</span><button class="btn" id="reload" type="button">最新に更新</button></div>
   </header>
 
@@ -189,6 +197,7 @@ footer a{color:var(--accent)}
         <li>雪質は降っている時間帯の山頂気温から判定します。−8℃以下「極上ドライ」、−4℃以下「ドライ」、−1℃以下「やや重め」、それより高い「湿雪」。</li>
         <li>信頼度はモデル間のばらつきです。そろっていれば「高」、割れていれば「低」。「低」の日は直前まで様子を見てください。</li>
         <li>リフト注意は営業時間帯（8〜16時）の風で判定します。山頂の標高に合わせた上空の風（14m/s 以上「注意」、20m/s 以上「運休リスク」）と、地上の最大瞬間風速（12m/s 以上「注意」、18m/s 以上「運休リスク」）の厳しいほうを採用します。</li>
+        <li>地形マップは、国土地理院の標高データ（約15m 間隔）を使います。各地点の標高での降雪量に、風による偏りを掛けています。風上側 約300m の地形が自分より高い場所（風下の斜面・くぼ地）は増やし、風上に向いた斜面や尾根は減らします。補正の幅は風速 4m/s で 0、16m/s 以上で最大 ±60% です。この係数は実測で検証していない目安です。</li>
         <li>詳細の上に出る「近くの実測」は、気象庁アメダスの最新の積雪深と24時間降雪量です。予報と見比べて、当たり具合を確かめられます。</li>
         <li>「朝イチ」は前日18時〜当日9時に山頂で積もる量です。圧雪前の新雪を狙う目安になります。</li>
         <li>長野 53・北海道 31 か所を収録しています（リフト1〜2本の小規模な町営ゲレンデは未収録）。スキー場の座標と標高は概略値です。ピンポイントの山岳予報ではないので、現地の発表もあわせて確認してください。</li>
@@ -326,6 +335,7 @@ const API = "https://api.open-meteo.com/v1/forecast";
 const DAYS = 14, LAPSE = 6.0, CACHE_MIN = 60;
 const MOCK = /[?&]mock=1/.test(location.search);
 const WD = ["日","月","火","水","木","金","土"];
+const md = (date)=>{ const d=new Date(date+"T00:00:00"); return (d.getMonth()+1)+"/"+d.getDate()+WD[d.getDay()]; };
 
 /* ---------- 保存（1人のブラウザ内だけ） ---------- */
 const store = {
@@ -370,10 +380,18 @@ function windAt(s,i,z){ // 標高 z 付近の上空風 m/s（925/850/700hPa か�
   if(z<=1500) return (a!=null&&b!=null) ? a+(b-a)*(z-800)/700 : (b!=null?b:a);
   return (b!=null&&c!=null) ? b+(c-b)*Math.min(1,(z-1500)/1550) : (b!=null?b:c);
 }
+function windVec(s,i,z){ // 標高 z 付近の風ベクトル [東向き成分, 北向き成分, 風速]
+  const lv=(W,D)=>{ if(!W||!D||W[i]==null||D[i]==null) return null; const a=D[i]*Math.PI/180; return [-W[i]*Math.sin(a),-W[i]*Math.cos(a),W[i]]; };
+  const a=lv(s.W9,s.D9), b=lv(s.W8,s.D8), c=lv(s.W7,s.D7);
+  const mix=(p,q,t)=>[p[0]+(q[0]-p[0])*t,p[1]+(q[1]-p[1])*t,p[2]+(q[2]-p[2])*t];
+  if(z<=800) return a||b;
+  if(z<=1500) return (a&&b)?mix(a,b,(z-800)/700):(b||a);
+  return (b&&c)?mix(b,c,Math.min(1,(z-1500)/1550)):(b||c);
+}
 function pack(h,m){ const g=v=>{const a=series(h,v,m); return valid(a)?a:null};
   const T=g("temperature_2m"), P=g("precipitation"); if(!T||!P) return null;
   return {m,T,P,H:g("relative_humidity_2m"),T9:g("temperature_925hPa"),T8:g("temperature_850hPa"),T7:g("temperature_700hPa"),
-    W9:g("wind_speed_925hPa"),W8:g("wind_speed_850hPa"),W7:g("wind_speed_700hPa"),G:g("wind_gusts_10m"),F:g("freezing_level_height")};
+    W9:g("wind_speed_925hPa"),W8:g("wind_speed_850hPa"),W7:g("wind_speed_700hPa"),D9:g("wind_direction_925hPa"),D8:g("wind_direction_850hPa"),D7:g("wind_direction_700hPa"),G:g("wind_gusts_10m"),F:g("freezing_level_height")};
 }
 function series(h,v,m){ return h[v+"_"+m] || h[v] || null; }
 function valid(a){ return !!a && a.some(x=>x!=null); }
@@ -414,6 +432,7 @@ function mockHourly(r,models,seed){ // 動作確認用の合成データ
     const up=(z,k)=>T.map((t,i)=>t==null?null:Math.round((t-(z-r.mid)/1000*(k+Math.sin(i/9)*2))*10)/10);
     h["temperature_925hPa_"+m]=up(800,5);h["temperature_850hPa_"+m]=up(1500,5);h["temperature_700hPa_"+m]=up(3050,5.5);
     h["wind_speed_925hPa_"+m]=W.map(w=>w==null?null:w*1.3);h["wind_speed_850hPa_"+m]=W.map(w=>w==null?null:w*2);h["wind_speed_700hPa_"+m]=W.map(w=>w==null?null:w*3.2);
+    ["925","850","700"].forEach(l=>{h["wind_direction_"+l+"hPa_"+m]=W.map((w,i)=>w==null?null:(300+Math.sin(i/30+seed)*40+mi*5+360)%360)});
   });
   return {hourly:h,elevation:r.mid};
 }
@@ -454,7 +473,7 @@ async function loadDetail(r,force){
   let arr;
   if(MOCK) arr=[mockHourly(r,MODELS.map(m=>m[0]),R.indexOf(r))];
   else arr = await getJSON(API+"?latitude="+r.lat+"&longitude="+r.lon+"&elevation="+r.mid+
-    "&hourly=temperature_2m,precipitation,relative_humidity_2m,wind_gusts_10m,freezing_level_height,temperature_925hPa,temperature_850hPa,temperature_700hPa,wind_speed_925hPa,wind_speed_850hPa,wind_speed_700hPa&models="+MODELS.map(m=>m[0]).join(",")+
+    "&hourly=temperature_2m,precipitation,relative_humidity_2m,wind_gusts_10m,freezing_level_height,temperature_925hPa,temperature_850hPa,temperature_700hPa,wind_speed_925hPa,wind_speed_850hPa,wind_speed_700hPa,wind_direction_925hPa,wind_direction_850hPa,wind_direction_700hPa&models="+MODELS.map(m=>m[0]).join(",")+
     "&forecast_days="+DAYS+"&timezone=Asia%2FTokyo&wind_speed_unit=ms");
   const h = arr[0].hourly, time = h.time, days = dayIndex(time);
   const ms = MODELS.map(([m,label])=>{ const x=pack(h,m); if(x) x.label=label; return x; }).filter(Boolean);
@@ -486,10 +505,108 @@ async function loadDetail(r,force){
     // 朝イチ: 前日18時〜当日9時
     let am=null; const a0=d.idx[0]-6, a1=d.idx[0]+9; if(a0>=0){ am=0; for(let i=a0;i<a1&&i<hourly.length;i++) am+=hourly[i].snow||0; }
     const fz = median(d.idx.map(i=>median(ms.map(s=>s.F?s.F[i]:null))));
-    return {date:d.date, top, lv, perModel, conf, q, gust, wtop, lift, am, fz, nOk: ok.length};
+    // 地形マップ用: 標高ごとの降雪量と、雪が降っている時間帯の主な風
+    const prof=[]; for(let e=0;e<=3200;e+=100) prof.push(median(ok.map(s=>d.idx.reduce((a,i)=>a+snowE(s,i,r,e),0)))||0);
+    let U=0,V=0,SP=0,WT=0;
+    d.idx.forEach(i=>{ const us=[],vs=[],sp=[]; ms.forEach(s=>{const w2=windVec(s,i,r.top); if(w2){us.push(w2[0]);vs.push(w2[1]);sp.push(w2[2]);}});
+      if(!us.length) return; const g=(hourly[i].snow||0)+0.02; U+=median(us)*g; V+=median(vs)*g; SP+=median(sp)*g; WT+=g; });
+    const wdir = WT ? (Math.atan2(-U,-V)*180/Math.PI+360)%360 : null, wspd = WT ? SP/WT : null;
+    return {date:d.date, top, lv, perModel, conf, q, gust, wtop, lift, am, fz, nOk: ok.length, prof, wdir, wspd};
   });
   const res = {at:Date.now(), time, hourly, days:out, nModels:ms.length, dayStart:days.map(d=>d.idx[0])};
   DET[r.id]=res; return res;
+}
+
+/* ---------- 地形マップ（国土地理院の標高タイル＋風向き） ---------- */
+const TZ=13, TS=768, DIRS=["北","北北東","北東","東北東","東","東南東","南東","南南東","南","南南西","南西","西南西","西","西北西","北西","北北西"];
+let TM={}, tmDay=0, tmCur=null;
+function tileImg(url){ return new Promise((ok,ng)=>{ const im=new Image(); im.crossOrigin="anonymous"; im.onload=()=>ok(im); im.onerror=()=>ng(new Error("地図タイルを取得できません")); im.src=url; }); }
+async function loadTerrain(r){
+  if(TM[r.id]) return TM[r.id];
+  const n=Math.pow(2,TZ), latR=r.lat*Math.PI/180;
+  const cx=(r.lon+180)/360*n*256, cy=(1-Math.log(Math.tan(latR)+1/Math.cos(latR))/Math.PI)/2*n*256;
+  const x0=Math.round(cx-TS/2), y0=Math.round(cy-TS/2), mpp=156543.03*Math.cos(latR)/n;
+  const dem=new Float32Array(TS*TS), base=document.createElement("canvas"); base.width=base.height=TS;
+  if(MOCK){
+    for(let y=0;y<TS;y++) for(let x=0;x<TS;x++){ const a=Math.hypot(x-430,y-330), b=Math.hypot(x-250,y-520); dem[y*TS+x]=700+1300*Math.exp(-a*a/40000)+700*Math.exp(-b*b/22000); }
+    const g=base.getContext("2d"); g.fillStyle="#eef1f5"; g.fillRect(0,0,TS,TS);
+  } else {
+    const dc=document.createElement("canvas"); dc.width=dc.height=TS; const dg=dc.getContext("2d",{willReadFrequently:true}), bg=base.getContext("2d");
+    const jobs=[];
+    for(let ty=Math.floor(y0/256); ty<=Math.floor((y0+TS-1)/256); ty++) for(let tx=Math.floor(x0/256); tx<=Math.floor((x0+TS-1)/256); tx++){
+      const px=tx*256-x0, py=ty*256-y0;
+      jobs.push(tileImg("https://cyberjapandata.gsi.go.jp/xyz/dem_png/"+TZ+"/"+tx+"/"+ty+".png").then(im=>dg.drawImage(im,px,py)));
+      jobs.push(tileImg("https://cyberjapandata.gsi.go.jp/xyz/pale/"+TZ+"/"+tx+"/"+ty+".png").then(im=>bg.drawImage(im,px,py),()=>{}));
+    }
+    await Promise.all(jobs);
+    const d=dg.getImageData(0,0,TS,TS).data;
+    for(let i=0;i<TS*TS;i++){ const v=d[i*4]*65536+d[i*4+1]*256+d[i*4+2]; dem[i] = v===8388608 ? NaN : (v<8388608 ? v*0.01 : (v-16777216)*0.01); }
+  }
+  return TM[r.id]={dem,base,mpp};
+}
+function terrainSnow(t,day){ // 画素ごとの推定降雪 cm と補正係数
+  const {dem,mpp}=t, out=new Float32Array(TS*TS), fac=new Float32Array(TS*TS);
+  const w=day.wspd||0, K=Math.min(0.6,Math.max(0,(w-4)/20));        // 風が強いほど偏りが大きい
+  const a=(day.wdir==null?0:day.wdir)*Math.PI/180, ux=Math.sin(a), uy=-Math.cos(a);   // 風上の向き（画面座標）
+  const N=20;                                                           // 風上 約300m を見る
+  for(let y=0;y<TS;y++) for(let x=0;x<TS;x++){
+    const i=y*TS+x, z=dem[i]; if(isNaN(z)){ out[i]=NaN; continue; }
+    let sx=-9;
+    if(K>0){ for(let k=2;k<=N;k+=2){ const xx=Math.round(x+ux*k), yy=Math.round(y+uy*k); if(xx<0||yy<0||xx>=TS||yy>=TS) break; const zz=dem[yy*TS+xx]; if(isNaN(zz)) continue; const tn=(zz-z)/(k*mpp); if(tn>sx) sx=tn; } }
+    const f = (K>0&&sx>-9) ? 1+K*Math.max(-1,Math.min(1,sx/0.3)) : 1;  // 風上が高い（風下側）ほど増、風上斜面は減
+    const e=Math.max(0,Math.min(3199,z)), j=Math.floor(e/100), base=day.prof[j]+(day.prof[j+1]-day.prof[j])*(e/100-j);
+    fac[i]=f; out[i]=base*f;
+  }
+  return {out,fac};
+}
+function drawTerrain(r,t,day){
+  const cv=$("tmcv"); if(!cv) return; const g=cv.getContext("2d"), {dem,mpp,base}=t, res=terrainSnow(t,day);
+  tmCur={r,t,day,res};
+  g.globalAlpha=1; g.drawImage(base,0,0);
+  const im=g.createImageData(TS,TS), px=im.data;
+  const pal=[[214,230,251],[169,205,247],[111,169,238],[58,120,221],[59,63,196],[90,31,158]];
+  for(let y=1;y<TS-1;y++) for(let x=1;x<TS-1;x++){
+    const i=y*TS+x, v=res.out[i]; if(isNaN(v)) continue;
+    const sh=Math.max(-1,Math.min(1,((dem[i-1]-dem[i+1])+(dem[i-TS]-dem[i+TS]))/(4*mpp)*1.6));   // 北西から光を当てた陰影
+    let c,al;
+    if(v<1){ c=[120,130,145]; al=0; } else { c=pal[v<5?0:v<10?1:v<20?2:v<30?3:v<50?4:5]; al=165; }
+    const k=1+sh*0.35;
+    px[i*4]=Math.max(0,Math.min(255,c[0]*k)); px[i*4+1]=Math.max(0,Math.min(255,c[1]*k)); px[i*4+2]=Math.max(0,Math.min(255,c[2]*k));
+    px[i*4+3]= al ? al : Math.round(Math.abs(sh)*70);
+    if(!al){ const q=sh>0?255:0; px[i*4]=px[i*4+1]=px[i*4+2]=q; }
+  }
+  const tmp=document.createElement("canvas"); tmp.width=tmp.height=TS; tmp.getContext("2d").putImageData(im,0,0); g.drawImage(tmp,0,0);
+  // スキー場の位置・縮尺・風向き
+  g.fillStyle="#fff"; g.strokeStyle="#16202e"; g.lineWidth=3; g.beginPath(); g.arc(TS/2,TS/2,7,0,6.3); g.fill(); g.stroke();
+  const km=1000/mpp; g.fillStyle="rgba(255,255,255,.85)"; g.fillRect(16,TS-44,km+16,30); g.fillStyle="#16202e"; g.fillRect(24,TS-24,km,4); g.font="bold 18px sans-serif"; g.textBaseline="alphabetic"; g.fillText("1km",24,TS-28);
+  g.fillStyle="rgba(255,255,255,.85)"; g.fillRect(TS-250,TS-30,250,30); g.fillStyle="#16202e"; g.font="14px sans-serif"; g.fillText("地図・標高: 国土地理院（地理院タイル）",TS-244,TS-10);
+  if(day.wdir!=null){
+    const a=day.wdir*Math.PI/180, dx=-Math.sin(a), dy=Math.cos(a), cx=84, cy=84, L=46;   // 風が吹いていく向き
+    g.fillStyle="rgba(255,255,255,.9)"; g.beginPath(); g.arc(cx,cy,64,0,6.3); g.fill();
+    g.strokeStyle="#c0362c"; g.fillStyle="#c0362c"; g.lineWidth=7; g.beginPath(); g.moveTo(cx-dx*L,cy-dy*L); g.lineTo(cx+dx*(L-14),cy+dy*(L-14)); g.stroke();
+    g.beginPath(); g.moveTo(cx+dx*L,cy+dy*L); g.lineTo(cx+dx*(L-22)-dy*14,cy+dy*(L-22)+dx*14); g.lineTo(cx+dx*(L-22)+dy*14,cy+dy*(L-22)-dx*14); g.fill();
+    g.fillStyle="#16202e"; g.font="bold 16px sans-serif"; g.textAlign="center"; g.fillText("北",cx,cy-46); g.textAlign="left";
+  }
+}
+function tmInfo(day){ return day.wdir==null ? "この日は風向きのデータがないため、標高による差だけを表示します。"
+  : "雪が降る時間帯の風: "+DIRS[Math.round(day.wdir/22.5)%16]+"の風 "+r0(day.wspd)+"m/s（山頂付近）。"+(day.wspd<5?"風が弱いので、偏りは小さい見込みです。":"矢印の先の斜面（風下側）に多く、風上の斜面と尾根は少なめに出ます。"); }
+function setupTmap(r,d){
+  const days=d.days.slice(0,span); if(!days.length) return;
+  if(tmDay>=days.length || !tmCur || tmCur.r!==r){ tmDay=0; let best=-1; days.forEach((x,i)=>{ if((x.top||0)>best){best=x.top||0; tmDay=i;} }); }
+  const chips=()=>{ $("tmdays").innerHTML=days.map((x,i)=>'<button type="button" class="chip'+(i===tmDay?" on":"")+'" data-i="'+i+'">'+md(x.date)+" "+r0(x.top)+'cm</button>').join(""); $("tminfo").textContent=tmInfo(days[tmDay]); };
+  chips();
+  const show=async()=>{
+    const b=$("tmgo"); b.disabled=true; b.textContent="地形データを読み込み中…";
+    try{ const t=await loadTerrain(r); if(r.id!==selected||!$("tmcv")) return; $("tmwrap").hidden=false; b.hidden=true; drawTerrain(r,t,days[tmDay]);
+      $("tmleg").hidden=false; $("tmleg").innerHTML=[["1〜4",1],["5〜9",2],["10〜19",3],["20〜29",4],["30〜49",5],["50〜",6]].map(x=>'<span><i style="background:var(--s'+x[1]+')"></i>'+x[0]+'cm</span>').join("")+'<span>白丸 = スキー場の中心</span><span>地図をタップするとその地点の値</span>';
+      $("tmread").textContent="約"+Math.round(TS*t.mpp/100)/10+"km 四方。風向きと地形から計算した目安で、実測による検証はしていません。";
+    }catch(e){ b.disabled=false; b.textContent="地形マップを表示"; $("tmread").textContent="地形データを取得できませんでした（"+e.message+"）。"; }
+  };
+  $("tmgo").addEventListener("click",show);
+  $("tmdays").addEventListener("click",e=>{ const c=e.target.closest(".chip"); if(!c) return; tmDay=+c.dataset.i; chips(); if(TM[r.id]&&!$("tmwrap").hidden) drawTerrain(r,TM[r.id],days[tmDay]); });
+  $("tmcv").addEventListener("click",e=>{ if(!tmCur) return; const b=e.target.getBoundingClientRect(), x=Math.floor((e.clientX-b.left)/b.width*TS), y=Math.floor((e.clientY-b.top)/b.height*TS), i=y*TS+x, z=tmCur.t.dem[i];
+    $("tmread").textContent = isNaN(z) ? "この地点は標高データがありません。" : "タップした地点: 標高 "+Math.round(z)+"m ／ 推定 "+r0(tmCur.res.out[i])+"cm（風による補正 ×"+tmCur.res.fac[i].toFixed(2)+"）"; });
+  if(TM[r.id]) show();
 }
 
 /* ---------- アメダス実測（気象庁） ---------- */
@@ -590,7 +707,11 @@ async function renderDetail(force,scroll){
       '<div class="lv">'+x.lv.map(l=>'<span class="k">'+l.k+'</span><span class="bar"><i style="width:'+Math.min(100,(l.cm||0)/maxTop*100)+'%"></i></span><span class="v">'+r0(l.cm)+'cm</span><span class="t">'+r0(l.tmin)+'〜'+r0(l.tmax)+'℃'+(l.rain>=1?" 雨"+r0(l.rain)+"mm":"")+'</span>').join("")+'</div>'+
       '<div class="models">'+x.perModel.map(p=>'<span class="k">'+p.label+'</span><span class="bar"><i style="width:'+((p.cm||0)/mm*100)+'%;background:var(--muted)"></i></span><span class="v">'+(p.cm==null?"期間外":r0(p.cm))+'</span>').join("")+'</div>'+
       (x.fz!=null?'<div class="am">0℃ の高さ 約 '+Math.round(x.fz/50)*50+'m</div>':"")+'</div>';
-    }).join("")+'</div>';
+    }).join("")+'</div>'+
+    '<div class="tmap"><h3>地形マップ（風向きから見た積もりやすさ）</h3><div class="chips" id="tmdays"></div><div id="tminfo" class="am"></div>'+
+    '<button type="button" class="btn" id="tmgo">地形マップを表示</button><div class="tmwrap" id="tmwrap" hidden><canvas id="tmcv" width="768" height="768"></canvas></div>'+
+    '<div id="tmread" class="am"></div><div class="legend" id="tmleg" hidden></div></div>';
+  setupTmap(r,d);
   drawChart(d);
   renderAsk();
   renderAmedas(r);
@@ -624,7 +745,6 @@ function drawChart(d){
   d.hourly.forEach((h,i)=>{ if(h.t==null) return; const X=x(i)+bw/2,Y=yt(h.t); st?g.lineTo(X,Y):g.moveTo(X,Y); st=true; }); g.stroke();
 }
 /* ---------- AI に質問（予報データ付きの質問文を作る） ---------- */
-const md = (date)=>{ const d=new Date(date+"T00:00:00"); return (d.getMonth()+1)+"/"+d.getDate()+WD[d.getDay()]; };
 function buildPrompt(){
   const q = $("askq").value.trim() || "この予報から、滑りに行くおすすめの日と場所を教えて。";
   const sel = R.find(x=>x.id===selected), det = sel && DET[sel.id];
