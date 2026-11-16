@@ -82,6 +82,7 @@ button,select,input{font:inherit;color:inherit}
 table.grid{border-collapse:separate;border-spacing:3px;width:100%;min-width:560px}
 table.grid th{font-size:12px;font-weight:500;color:var(--muted);padding:2px 4px;text-align:center;white-space:nowrap}
 table.grid th.dh{cursor:pointer;line-height:1.25}
+table.grid th.dh.far{opacity:.7;font-style:italic}
 table.grid th.dh.sorted{color:var(--accent);font-weight:700}
 table.grid td.name,table.grid th.nm{position:sticky;left:0;background:var(--surface);z-index:1}
 table.grid td.name{padding-right:8px;font-size:14px;display:flex;align-items:center;min-height:38px}
@@ -120,6 +121,14 @@ canvas{width:100%;height:200px;display:block}
 .models{display:grid;grid-template-columns:auto 1fr auto;gap:2px 8px;font-size:12px;align-items:center;border-top:1px dashed var(--line);padding-top:6px}
 .models .k{color:var(--muted)}
 .models .v{font-family:var(--f-num);font-size:15px;font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.askp{font-size:13px;color:var(--muted);margin:0 0 8px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.chip{font-size:13px;border:1px solid var(--line);background:var(--surface2);border-radius:99px;padding:6px 12px;cursor:pointer;touch-action:manipulation}
+.chip:hover{border-color:var(--accent)}
+#askq,#askprev{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:16px;line-height:1.5;resize:vertical}
+#askprev{font-size:12px;margin-top:8px;color:var(--muted)}
+.askbtn{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
+.askbtn a.btn{text-decoration:none;display:inline-flex;align-items:center}
 details.how{font-size:13px}
 details.how summary{cursor:pointer;font-weight:700}
 details.how ul{margin:8px 0 0;padding-left:20px;max-width:70ch}
@@ -139,7 +148,7 @@ footer a{color:var(--accent)}
   <div id="msg"></div>
 
   <section class="panel" aria-labelledby="h-hits">
-    <h2 id="h-hits">お気に入りの当たり日（7日以内）</h2>
+    <h2 id="h-hits">お気に入りの当たり日</h2>
     <div class="hits" id="hits"></div>
   </section>
 
@@ -148,6 +157,7 @@ footer a{color:var(--accent)}
     <div class="views" id="views"></div>
     <div class="controls">
       <label for="area">エリア<select id="area"></select></label>
+      <span style="display:flex;gap:6px"><button class="btn" id="span7" type="button">7日</button><button class="btn" id="span14" type="button">14日</button></span>
       <label for="th">パウダー基準<input id="th" type="number" min="1" max="99" step="1" value="15">cm以上</label>
     </div>
     <div class="scroll"><table class="grid" id="grid"></table></div>
@@ -156,11 +166,21 @@ footer a{color:var(--accent)}
 
   <section class="panel" id="detail" aria-live="polite"></section>
 
+  <section class="panel" aria-labelledby="h-ask">
+    <h2 id="h-ask">AIに質問</h2>
+    <p class="askp">表示中の予報データを付けた質問文を作り、Claude で開きます。</p>
+    <div class="chips" id="askchips"></div>
+    <textarea id="askq" rows="2" placeholder="例：今週末、日帰りで行くならどこがいい？"></textarea>
+    <div class="askbtn"><a class="btn on" id="askgo" href="https://claude.ai/new" target="_blank" rel="noopener">Claude で聞く</a><button class="btn" id="askcopy" type="button">質問文をコピー</button><span id="askst" class="askp"></span></div>
+    <details class="how" style="margin-top:8px"><summary style="font-weight:500">送る内容を確認</summary><textarea id="askprev" rows="8" readonly></textarea></details>
+  </section>
+
   <section class="panel">
     <details class="how">
       <summary>この予報の読み方と計算の根拠</summary>
       <ul>
-        <li>気象データは Open-Meteo 経由で、気象庁（JMA MSM/GSM）・ECMWF・米国 GFS・ドイツ ICON の4モデルを取得しています。表は JMA と ECMWF の平均、詳細は4モデルの中央値です。</li>
+        <li>気象データは Open-Meteo 経由で、気象庁（JMA MSM/GSM）・ECMWF・米国 GFS・ドイツ ICON の4モデルを取得しています。表は JMA・ECMWF・GFS の平均、詳細は4モデルの中央値です。</li>
+        <li>14日表示では、先の日ほど使えるモデルが減ります（ICON は約7日、JMA は約11日まで）。8日目以降は「降りそうな時期」をつかむ参考値として見てください。</li>
         <li>降雪量は「降水量 × 雪になる割合 × 雪の軽さ」で標高ごとに計算します。気温は中腹を基準に 100m あたり 0.6℃ で山頂・山麓へ補正します。</li>
         <li>雪になる割合は 0.5℃以下で100%、2.5℃以上で0%。雪の軽さ（降水1mmあたりのcm）は −10℃以下 1.8、−6℃以下 1.5、−3℃以下 1.2、−1℃以下 1.0、それより高い 0.8 です。</li>
         <li>雪質は降っている時間帯の山頂気温から判定します。−8℃以下「極上ドライ」、−4℃以下「ドライ」、−1℃以下「やや重め」、それより高い「湿雪」。</li>
@@ -297,9 +317,9 @@ const R = [
 ].map(a=>({id:a[0],name:a[1],region:a[2],area:a[3],lat:a[4],lon:a[5],base:a[6],top:a[7],mid:Math.round((a[6]+a[7])/2)}));
 const VIEWS = ["お気に入り","長野","北海道","その他"];
 const MODELS = [["jma_seamless","JMA 気象庁"],["ecmwf_ifs025","ECMWF 欧州"],["gfs_seamless","GFS 米国"],["icon_seamless","ICON ドイツ"]];
-const OV_MODELS = ["jma_seamless","ecmwf_ifs025"];
+const OV_MODELS = ["jma_seamless","ecmwf_ifs025","gfs_seamless"];
 const API = "https://api.open-meteo.com/v1/forecast";
-const DAYS = 7, LAPSE = 6.0, CACHE_MIN = 60;
+const DAYS = 14, LAPSE = 6.0, CACHE_MIN = 60;
 const MOCK = /[?&]mock=1/.test(location.search);
 const WD = ["日","月","火","水","木","金","土"];
 
@@ -313,6 +333,7 @@ let view = store.get("view2","長野"), area = "すべて", sortDay = -1, select
 if(VIEWS.indexOf(view)<0) view="長野";
 const viewRows = ()=> R.filter(r=> view==="お気に入り" ? favs.has(r.id) : (r.region===view && (area==="すべて"||r.area===area)));
 let threshold = store.get("th",15);
+let span = store.get("span",7)===14?14:7;
 let OV = null, DET = {};
 
 /* ---------- 雪の計算 ---------- */
@@ -324,7 +345,8 @@ function snowOf(p,t){ // p: 降水mm/h, t: 気温℃ → cm
 }
 const tAt = (tMid,r,elev)=> tMid==null?null : tMid - LAPSE*(elev-r.mid)/1000;
 function series(h,v,m){ return h[v+"_"+m] || h[v] || null; }
-function valid(a){ return !!a && a.filter(x=>x!=null).length >= a.length*0.9; }
+function valid(a){ return !!a && a.some(x=>x!=null); }
+function dayOK(s,d){ let n=0; for(const i of d.idx){ if(s.P[i]!=null&&s.T[i]!=null) n++; } return n>=20; }
 function median(a){ const b=a.filter(x=>x!=null&&!isNaN(x)).sort((x,y)=>x-y); if(!b.length) return null; const m=b.length>>1; return b.length%2?b[m]:(b[m-1]+b[m])/2; }
 function dayIndex(times){ // 日付ごとの時間インデックス
   const days=[]; let cur=null;
@@ -353,6 +375,7 @@ function mockHourly(r,models,seed){ // 動作確認用の合成データ
     for(let i=0;i<n;i++){
       const storm=Math.max(0,Math.sin(i/19+ph)+Math.sin(i/53+seed)*0.8-0.5);
       T.push(Math.round((-4-(r.mid-900)/200+Math.sin(i/3.82)*2.5+Math.sin(i/40+seed)*4+mi*0.3)*10)/10);
+      const lim=m==="icon_seamless"?180:m==="jma_seamless"?264:9999; if(i>=lim){T[T.length-1]=null;P.push(null);W.push(null);G.push(null);F.push(null);continue;}
       P.push(Math.round(storm*(1.6+mi*0.25)*10)/10); W.push(3+storm*4); G.push(m==="jma_seamless"?null:6+storm*(9+mi*2)); F.push(m.indexOf("gfs")>=0||m.indexOf("icon")>=0?1200+Math.sin(i/30)*500:null);
     }
     h["temperature_2m_"+m]=T;h["precipitation_"+m]=P;h["wind_speed_10m_"+m]=W;h["wind_gusts_10m_"+m]=G;h["freezing_level_height_"+m]=F;
@@ -362,19 +385,21 @@ function mockHourly(r,models,seed){ // 動作確認用の合成データ
 function calcRow(r,h,days){
   const per = OV_MODELS.map(m=>{ const T=series(h,"temperature_2m",m), P=series(h,"precipitation",m); return valid(T)&&valid(P)?{T,P}:null; }).filter(Boolean);
   return days.map(d=>{
-    const vals = per.map(s=>d.idx.reduce((a,i)=>a+snowOf(s.P[i],tAt(s.T[i],r,r.top)),0));
-    const tw = per.map(s=>{let w=0,sw=0; d.idx.forEach(i=>{const t=tAt(s.T[i],r,r.top),sn=snowOf(s.P[i],t); w+=sn; sw+=sn*t}); return w>0.3?sw/w:null});
+    const ok = per.filter(s=>dayOK(s,d));
+    const vals = ok.map(s=>d.idx.reduce((a,i)=>a+snowOf(s.P[i],tAt(s.T[i],r,r.top)),0));
+    const tw = ok.map(s=>{let w=0,sw=0; d.idx.forEach(i=>{const t=tAt(s.T[i],r,r.top),sn=snowOf(s.P[i],t); w+=sn; sw+=sn*t}); return w>0.3?sw/w:null});
     const cm = vals.length? vals.reduce((a,b)=>a+b,0)/vals.length : null;
-    const split = vals.length>1 && Math.abs(vals[0]-vals[1]) > Math.max(5,0.6*Math.max(vals[0],vals[1]));
-    return {cm, split, qt: median(tw)};
+    const hi = Math.max.apply(null,vals), lo = Math.min.apply(null,vals);
+    const split = vals.length>1 && hi-lo > Math.max(5,0.6*hi);
+    return {cm, split, qt: median(tw), n: vals.length};
   });
 }
 async function loadOverview(list,force){ // list: 必要なスキー場だけ取得してキャッシュに足す
-  if(!OV){ const c=MOCK?null:store.get("ov2",null); OV = c&&c.rows ? c : {dates:null,rows:{},at:0}; }
+  if(!OV){ const c=MOCK?null:store.get("ov3",null); OV = c&&c.rows ? c : {dates:null,rows:{},at:0}; }
   const fresh = id=>{ const x=OV.rows[id]; return x && Date.now()-x.at < CACHE_MIN*60e3; };
   const need = list.filter(r=> force || !fresh(r.id));
-  for(let k=0;k<need.length;k+=50){
-    const part = need.slice(k,k+50);
+  for(let k=0;k<need.length;k+=30){
+    const part = need.slice(k,k+30);
     let arr;
     if(MOCK) arr = part.map(r=>mockHourly(r,OV_MODELS,R.indexOf(r)));
     else arr = await getJSON(API+"?latitude="+part.map(r=>r.lat).join(",")+"&longitude="+part.map(r=>r.lon).join(",")+"&elevation="+part.map(r=>r.mid).join(",")+
@@ -386,7 +411,7 @@ async function loadOverview(list,force){ // list: 必要なスキー場だけ取
     part.forEach((r,ri)=>{ OV.rows[r.id] = {at:Date.now(), days:calcRow(r,arr[ri].hourly,days)}; });
     OV.at = Date.now();
   }
-  if(!MOCK && need.length) store.set("ov2",OV);
+  if(!MOCK && need.length) store.set("ov3",OV);
 }
 async function loadDetail(r,force){
   const c = DET[r.id];
@@ -402,18 +427,19 @@ async function loadDetail(r,force){
   if(!ms.length) throw new Error("使えるモデルのデータがありません");
   const levels = [["山頂",r.top],["中腹",r.mid],["山麓",r.base]];
   // 時間ごとの中央値（グラフ用）
-  const hourly = time.map((_,i)=>({ snow: median(ms.map(s=>snowOf(s.P[i],tAt(s.T[i],r,r.top)))), t: median(ms.map(s=>tAt(s.T[i],r,r.top))) }));
+  const hourly = time.map((_,i)=>({ snow: median(ms.map(s=>(s.P[i]==null||s.T[i]==null)?null:snowOf(s.P[i],tAt(s.T[i],r,r.top)))), t: median(ms.map(s=>tAt(s.T[i],r,r.top))) }));
   const out = days.map((d,di)=>{
-    const perModel = ms.map(s=>({label:s.label, cm:d.idx.reduce((a,i)=>a+snowOf(s.P[i],tAt(s.T[i],r,r.top)),0)}));
+    const ok = ms.filter(s=>dayOK(s,d));
+    const perModel = ms.map(s=>({label:s.label, cm: ok.indexOf(s)<0 ? null : d.idx.reduce((a,i)=>a+snowOf(s.P[i],tAt(s.T[i],r,r.top)),0)}));
     const lv = levels.map(([k,e])=>{
-      const cm = median(ms.map(s=>d.idx.reduce((a,i)=>a+snowOf(s.P[i],tAt(s.T[i],r,e)),0)));
-      const ts = d.idx.map(i=>median(ms.map(s=>tAt(s.T[i],r,e)))).filter(x=>x!=null);
-      const rain = median(ms.map(s=>d.idx.reduce((a,i)=>{const t=tAt(s.T[i],r,e); return a+(s.P[i]>0&&t>1.5?s.P[i]:0)},0)));
-      return {k,e,cm,tmin:Math.min.apply(null,ts),tmax:Math.max.apply(null,ts),rain};
+      const cm = median(ok.map(s=>d.idx.reduce((a,i)=>a+snowOf(s.P[i],tAt(s.T[i],r,e)),0)));
+      const ts = d.idx.map(i=>median(ok.map(s=>tAt(s.T[i],r,e)))).filter(x=>x!=null);
+      const rain = median(ok.map(s=>d.idx.reduce((a,i)=>{const t=tAt(s.T[i],r,e); return a+(s.P[i]>0&&t>1.5?s.P[i]:0)},0)));
+      return {k,e,cm,tmin:ts.length?Math.min.apply(null,ts):null,tmax:ts.length?Math.max.apply(null,ts):null,rain};
     });
-    const top = lv[0].cm, vals = perModel.map(p=>p.cm);
-    const spread = Math.max.apply(null,vals)-Math.min.apply(null,vals);
-    const conf = ms.length<2?["—",""] : spread<=Math.max(4,0.5*top)?["高","good"] : spread<=Math.max(8,1.0*top)?["中","warn"] : ["低","bad"];
+    const top = lv[0].cm, vals = perModel.map(p=>p.cm).filter(x=>x!=null);
+    const spread = vals.length?Math.max.apply(null,vals)-Math.min.apply(null,vals):0;
+    const conf = vals.length<2?["—",""] : spread<=Math.max(4,0.5*top)?["高","good"] : spread<=Math.max(8,1.0*top)?["中","warn"] : ["低","bad"];
     let w=0,sw=0; d.idx.forEach(i=>{const x=hourly[i]; if(x.snow>0){w+=x.snow;sw+=x.snow*x.t}});
     const q = quality(w>0.3?sw/w:null);
     const gusts = d.idx.filter(i=>{const hh=+time[i].slice(11,13);return hh>=8&&hh<=16}).map(i=>median(ms.map(s=>s.G?s.G[i]:null))).filter(x=>x!=null);
@@ -422,7 +448,7 @@ async function loadDetail(r,force){
     // 朝イチ: 前日18時〜当日9時
     let am=null; const a0=d.idx[0]-6, a1=d.idx[0]+9; if(a0>=0){ am=0; for(let i=a0;i<a1&&i<hourly.length;i++) am+=hourly[i].snow||0; }
     const fz = median(d.idx.map(i=>median(ms.map(s=>s.F?s.F[i]:null))));
-    return {date:d.date, top, lv, perModel, conf, q, gust, lift, am, fz};
+    return {date:d.date, top, lv, perModel, conf, q, gust, lift, am, fz, nOk: ok.length};
   });
   const res = {at:Date.now(), time, hourly, days:out, nModels:ms.length, dayStart:days.map(d=>d.idx[0])};
   DET[r.id]=res; return res;
@@ -433,15 +459,15 @@ const $ = id=>document.getElementById(id);
 function showMsg(html,err){ $("msg").innerHTML = html?'<div class="banner'+(err?" err":"")+'">'+html+"</div>":""; }
 function renderHits(){
   const list=[];
-  R.filter(r=>favs.has(r.id)&&OV.rows[r.id]).forEach(r=>OV.rows[r.id].days.forEach((c,i)=>{ if(c.cm!=null) list.push({r,i,c}); }));
+  R.filter(r=>favs.has(r.id)&&OV.rows[r.id]).forEach(r=>OV.rows[r.id].days.slice(0,span).forEach((c,i)=>{ if(c.cm!=null) list.push({r,i,c}); }));
   const over = list.filter(x=>x.c.cm>=threshold).sort((a,b)=>a.i-b.i||b.c.cm-a.c.cm).slice(0,8);
   let html="";
   const card = x=>{ const q=quality(x.c.qt); return '<button type="button" class="hit" data-id="'+x.r.id+'"><span class="d">'+fmtDay(OV.dates[x.i],x.i)+'</span><span class="n">'+esc(x.r.name)+
-    '</span><span class="cm">'+r0(x.c.cm)+'<span>cm</span></span><span class="pills"><span class="pill '+q[1]+'">'+q[0]+'</span>'+(x.c.split?'<span class="pill bad">モデル割れ</span>':'<span class="pill good">モデル一致</span>')+'</span></button>'; };
+    '</span><span class="cm">'+r0(x.c.cm)+'<span>cm</span></span><span class="pills"><span class="pill '+q[1]+'">'+q[0]+'</span>'+(x.c.n<2?'<span class="pill">1モデルのみ</span>':x.c.split?'<span class="pill bad">モデル割れ</span>':'<span class="pill good">モデル一致</span>')+(x.i>=7?'<span class="pill warn">先の予報</span>':'')+'</span></button>'; };
   if(over.length) html = over.map(card).join("");
   else {
     const best = list.sort((a,b)=>b.c.cm-a.c.cm)[0];
-    html = '<div style="grid-column:1/-1;font-size:13px;color:var(--muted)">この7日間、'+threshold+'cm 以上の予報はありません。'+(best&&best.c.cm>=1?'いちばん降るのは次の日です。':'')+'</div>'+(best&&best.c.cm>=1?card(best):"");
+    html = '<div style="grid-column:1/-1;font-size:13px;color:var(--muted)">この'+span+'日間、'+threshold+'cm 以上の予報はありません。'+(best&&best.c.cm>=1?'いちばん降るのは次の日です。':'')+'</div>'+(best&&best.c.cm>=1?card(best):"");
   }
   if(!favs.size) html='<div style="font-size:13px;color:var(--muted)">表の ☆ を押すと、お気に入りに追加できます。</div>';
   $("hits").innerHTML = html;
@@ -459,22 +485,24 @@ async function renderGrid(){
   catch(e){ if(seq===gridSeq) $("grid").innerHTML='<tbody><tr><td><div class="banner err">取得できませんでした（'+esc(e.message)+'）。「最新に更新」を押してください。</div></td></tr></tbody>'; return; }
   if(seq!==gridSeq) return;
   rows = rows.filter(r=>OV.rows[r.id]);
-  const total = r=>OV.rows[r.id].days.reduce((a,c)=>a+(c.cm||0),0);
+  if(sortDay>=span) sortDay=-1;
+  const total = r=>OV.rows[r.id].days.slice(0,span).reduce((a,c)=>a+(c.cm||0),0);
   const key = r=> sortDay<0 ? total(r) : (OV.rows[r.id].days[sortDay].cm||0);
   rows = rows.slice().sort((a,b)=>key(b)-key(a));
-  let h = '<thead><tr><th class="nm" style="text-align:left">スキー場（'+rows.length+'）</th>'+OV.dates.map((d,i)=>'<th class="dh'+(sortDay===i?" sorted":"")+'" data-i="'+i+'" title="この日で並べ替え">'+(i===0?"今日":fmtDay(d,-1).split("(")[0])+"<br>("+fmtDay(d,-1).split("(")[1]+'</th>').join("")+
-    '<th class="dh'+(sortDay<0?" sorted":"")+'" data-i="-1" title="7日合計で並べ替え">7日計</th></tr></thead><tbody>';
+  let h = '<thead><tr><th class="nm" style="text-align:left">スキー場（'+rows.length+'）</th>'+OV.dates.slice(0,span).map((d,i)=>'<th class="dh'+(i>=7?" far":"")+(sortDay===i?" sorted":"")+'" data-i="'+i+'" title="この日で並べ替え">'+(i===0?"今日":fmtDay(d,-1).split("(")[0])+"<br>("+fmtDay(d,-1).split("(")[1]+'</th>').join("")+
+    '<th class="dh'+(sortDay<0?" sorted":"")+'" data-i="-1" title="合計で並べ替え">'+span+'日計</th></tr></thead><tbody>';
   rows.forEach(r=>{
     h += '<tr class="'+(r.id===selected?"sel":"")+'"><td class="name"><button type="button" class="star'+(favs.has(r.id)?" on":"")+'" data-fav="'+r.id+'" aria-label="お気に入り切替">'+(favs.has(r.id)?"★":"☆")+
       '</button><span class="lbl"><button type="button" class="r" data-id="'+r.id+'">'+esc(r.name)+'</button><span class="area">'+(view==="お気に入り"?r.region+" ":"")+r.area+'</span></span></td>';
-    OV.rows[r.id].days.forEach(c=>{ const col=snowColor(c.cm||0);
+    OV.rows[r.id].days.slice(0,span).forEach(c=>{ const col=snowColor(c.cm||0);
       h += '<td class="c'+(c.cm>=threshold?" pw":"")+'" style="background:'+col[0]+';color:'+col[1]+'">'+(c.cm==null?"—":c.cm<0.5?"":r0(c.cm))+(c.split&&c.cm>=3?'<span class="q" title="モデルの予想が割れています">?</span>':"")+'</td>'; });
     h += '<td class="sum">'+r0(total(r))+'</td></tr>';
   });
-  if(!rows.length) h += '<tr><td colspan="'+(OV.dates.length+2)+'" style="color:var(--muted);font-size:13px;padding:10px 0">お気に入りがありません。「長野」「北海道」の表で ☆ を押して追加してください。</td></tr>';
+  if(!rows.length) h += '<tr><td colspan="'+(span+2)+'" style="color:var(--muted);font-size:13px;padding:10px 0">お気に入りがありません。「長野」「北海道」の表で ☆ を押して追加してください。</td></tr>';
   $("grid").innerHTML = h+"</tbody>";
   $("legend").innerHTML = [["1〜4",1],["5〜9",2],["10〜19",3],["20〜29",4],["30〜49",5],["50〜",6]].map(x=>'<span><i style="background:var(--s'+x[1]+')"></i>'+x[0]+'cm</span>').join("")+
-    '<span><i style="box-shadow:inset 0 0 0 2px var(--warn);background:transparent"></i>パウダー基準以上</span><span>? = モデルの予想が割れている</span><span>日付を押すとその日で並べ替え</span>';
+    '<span><i style="box-shadow:inset 0 0 0 2px var(--warn);background:transparent"></i>パウダー基準以上</span><span>? = モデルの予想が割れている</span><span>日付を押すとその日で並べ替え</span>'+(span>7?'<span>8日目以降は精度が下がる参考値</span>':'');
+  $("span7").classList.toggle("on",span===7); $("span14").classList.toggle("on",span===14);
   $("updated").textContent = "取得 "+new Date(OV.at).toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"});
 }
 async function renderDetail(force,scroll){
@@ -484,20 +512,22 @@ async function renderDetail(force,scroll){
   try{ d = await loadDetail(r,force); }
   catch(e){ box.innerHTML='<div class="dhead"><h2>'+esc(r.name)+'</h2></div><div class="banner err">詳細を取得できませんでした（'+esc(e.message)+'）。少し待って「最新に更新」を押してください。</div>'; return; }
   if(r.id!==selected) return;
-  const maxTop = Math.max(10, ...d.days.map(x=>x.lv[0].cm||0));
+  const days = d.days.slice(0,span);
+  const maxTop = Math.max(10, ...days.map(x=>x.lv[0].cm||0));
   box.innerHTML = '<div class="dhead"><h2>'+esc(r.name)+'</h2><span class="sub">'+r.region+' '+r.area+' ・ 山頂 '+r.top+'m ／ 中腹 '+r.mid+'m ／ 山麓 '+r.base+'m ・ '+d.nModels+'モデルの中央値</span></div>'+
     '<canvas id="chart" role="img" aria-label="山頂の1時間ごとの降雪量と気温"></canvas>'+
     '<div class="legend"><span><i style="background:var(--s4)"></i>山頂の降雪（cm/時）</span><span><i style="background:var(--bad);height:3px;vertical-align:3px"></i>山頂の気温（℃）</span></div>'+
-    '<div class="days">'+d.days.map((x,i)=>{
-      const mm = Math.max(1,...x.perModel.map(p=>p.cm));
+    '<div class="days">'+days.map((x,i)=>{
+      const mm = Math.max(1,...x.perModel.map(p=>p.cm||0));
       return '<div class="day'+(x.top>=threshold?" pw":"")+'"><div class="hd"><b>'+fmtDay(x.date,i)+'</b><span class="am">朝イチ '+(x.am==null?"—":r0(x.am)+"cm")+'</span></div>'+
       '<div class="big">'+r0(x.top)+'<span>cm（山頂）</span></div>'+
-      '<div class="pills"><span class="pill '+x.q[1]+'">雪質 '+x.q[0]+'</span><span class="pill '+x.conf[1]+'">信頼度 '+x.conf[0]+'</span><span class="pill '+x.lift[1]+'">リフト '+x.lift[0]+(x.gust!=null?" "+r0(x.gust)+"m/s":"")+'</span></div>'+
+      '<div class="pills"><span class="pill '+x.q[1]+'">雪質 '+x.q[0]+'</span><span class="pill '+x.conf[1]+'">信頼度 '+x.conf[0]+(x.nOk<d.nModels?"（"+x.nOk+"モデル）":"")+'</span>'+(i>=7?'<span class="pill warn">先の予報</span>':'')+'<span class="pill '+x.lift[1]+'">リフト '+x.lift[0]+(x.gust!=null?" "+r0(x.gust)+"m/s":"")+'</span></div>'+
       '<div class="lv">'+x.lv.map(l=>'<span class="k">'+l.k+'</span><span class="bar"><i style="width:'+Math.min(100,(l.cm||0)/maxTop*100)+'%"></i></span><span class="v">'+r0(l.cm)+'cm</span><span class="t">'+r0(l.tmin)+'〜'+r0(l.tmax)+'℃'+(l.rain>=1?" 雨"+r0(l.rain)+"mm":"")+'</span>').join("")+'</div>'+
-      '<div class="models">'+x.perModel.map(p=>'<span class="k">'+p.label+'</span><span class="bar"><i style="width:'+(p.cm/mm*100)+'%;background:var(--muted)"></i></span><span class="v">'+r0(p.cm)+'</span>').join("")+'</div>'+
+      '<div class="models">'+x.perModel.map(p=>'<span class="k">'+p.label+'</span><span class="bar"><i style="width:'+((p.cm||0)/mm*100)+'%;background:var(--muted)"></i></span><span class="v">'+(p.cm==null?"期間外":r0(p.cm))+'</span>').join("")+'</div>'+
       (x.fz!=null?'<div class="am">0℃ の高さ 約 '+Math.round(x.fz/50)*50+'m</div>':"")+'</div>';
     }).join("")+'</div>';
   drawChart(d);
+  renderAsk();
   if(scroll) box.scrollIntoView({behavior:"smooth",block:"start"});
 }
 function drawChart(d){
@@ -505,7 +535,9 @@ function drawChart(d){
   const css=getComputedStyle(document.documentElement), col=n=>css.getPropertyValue(n).trim();
   const dpr=window.devicePixelRatio||1, W=cv.clientWidth, H=cv.clientHeight; cv.width=W*dpr; cv.height=H*dpr;
   const g=cv.getContext("2d"); g.scale(dpr,dpr); g.clearRect(0,0,W,H);
-  const L=30,Rr=34,T=10,B=22, pw=W-L-Rr, ph=H-T-B, n=d.hourly.length;
+  const L=30,Rr=34,T=10,B=22, pw=W-L-Rr, ph=H-T-B;
+  const nd=Math.min(span,d.days.length), n=Math.min(d.hourly.length, nd<d.dayStart.length?d.dayStart[nd]:d.hourly.length);
+  d={hourly:d.hourly.slice(0,n),dayStart:d.dayStart.slice(0,nd),days:d.days.slice(0,nd)};
   const smax=Math.max(2,Math.ceil(Math.max(...d.hourly.map(x=>x.snow||0))));
   const ts=d.hourly.map(x=>x.t).filter(x=>x!=null); const tmin=Math.floor(Math.min(...ts,-1)/5)*5, tmax=Math.ceil(Math.max(...ts,1)/5)*5;
   const x=i=>L+i/n*pw, ys=v=>T+ph-(v/smax)*ph, yt=v=>T+ph-((v-tmin)/(tmax-tmin))*ph;
@@ -516,7 +548,7 @@ function drawChart(d){
   g.textAlign="left"; [tmin,0,tmax].filter((v,i,a)=>a.indexOf(v)===i&&v>=tmin&&v<=tmax).forEach(v=>g.fillText(v+"℃",L+pw+4,yt(v)));
   // 日区切り
   d.dayStart.forEach((s,i)=>{ const xx=x(s); g.strokeStyle=col("--line"); g.beginPath(); g.moveTo(xx,T); g.lineTo(xx,T+ph); g.stroke();
-    g.fillStyle=col("--muted"); g.textAlign="left"; if(pw/d.dayStart.length>38) g.fillText(fmtDay(d.days[i].date,-1).replace(/\(.\)/, W<520?"":"$&"),xx+3,H-9); });
+    g.fillStyle=col("--muted"); g.textAlign="left"; const stp=Math.ceil(40/(pw/d.dayStart.length)); if(i%stp===0) g.fillText(fmtDay(d.days[i].date,-1).replace(/\(.\)/, pw/d.dayStart.length<70?"":"$&"),xx+3,H-9); });
   // 降雪バー
   g.fillStyle=col("--s4"); const bw=Math.max(1,pw/n-0.5);
   d.hourly.forEach((h,i)=>{ if(h.snow>0.02){ const y=ys(h.snow); g.fillRect(x(i),y,bw,T+ph-y); } });
@@ -525,7 +557,38 @@ function drawChart(d){
   g.strokeStyle=col("--bad"); g.lineWidth=1.5; g.beginPath(); let st=false;
   d.hourly.forEach((h,i)=>{ if(h.t==null) return; const X=x(i)+bw/2,Y=yt(h.t); st?g.lineTo(X,Y):g.moveTo(X,Y); st=true; }); g.stroke();
 }
-function renderAll(){ renderHits(); renderGrid(); }
+/* ---------- AI に質問（予報データ付きの質問文を作る） ---------- */
+const md = (date)=>{ const d=new Date(date+"T00:00:00"); return (d.getMonth()+1)+"/"+d.getDate()+WD[d.getDay()]; };
+function buildPrompt(){
+  const q = $("askq").value.trim() || "この予報から、滑りに行くおすすめの日と場所を教えて。";
+  const sel = R.find(x=>x.id===selected), det = sel && DET[sel.id];
+  let t = "スキー・スノーボードの降雪予報について質問です。下の予報データ（"+new Date(OV.at).toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})+" 取得、複数の気象モデルから計算した山頂の日降雪量cm）を根拠に、日本語で簡潔に答えてください。?はモデルの予想が割れている日です。\n\n質問: "+q+"\n\n日付: "+OV.dates.slice(0,span).map(md).join(" ")+"\n";
+  const favRows = R.filter(r=>favs.has(r.id)&&OV.rows[r.id]);
+  const sum = r=>OV.rows[r.id].days.slice(0,span).reduce((x,c)=>x+(c.cm||0),0);
+  const viewTop = view==="お気に入り" ? [] : viewRows().filter(r=>OV.rows[r.id]&&!favs.has(r.id)).sort((a,b)=>sum(b)-sum(a)).slice(0,span>7?5:8);
+  const line = r=> r.name+"("+r.top+"m): "+OV.rows[r.id].days.slice(0,span).map(c=>c.cm==null?"-":Math.round(c.cm)+(c.split&&c.cm>=3?"?":"")).join(" ");
+  if(favRows.length) t += "[お気に入り]\n"+favRows.map(line).join("\n")+"\n";
+  if(viewTop.length) t += "["+view+(area==="すべて"?"":" "+area)+" 降雪上位]\n"+viewTop.map(line).join("\n")+"\n";
+  if(det) t += "["+sel.name+" 詳細] "+det.days.slice(0,Math.min(span,7)).map(x=>md(x.date)+" 山頂"+r0(x.top)+"cm/山麓"+r0(x.lv[2].cm)+"cm 山頂"+r0(x.lv[0].tmin)+"〜"+r0(x.lv[0].tmax)+"℃ 雪質"+x.q[0]+" 信頼度"+x.conf[0]+(x.gust!=null?" 突風"+r0(x.gust)+"m/s":"")).join(" / ")+"\n";
+  return t;
+}
+function syncAsk(){ const p=buildPrompt(); $("askprev").value=p; $("askgo").href="https://claude.ai/new?q="+encodeURIComponent(p); }
+function renderAsk(){
+  if(!OV||!OV.dates) return;
+  const sel = R.find(x=>x.id===selected);
+  const qs = ["今週末、いちばん良さそうなのはどこ？","この期間でベストの日はいつ？",(sel?sel.name:"ここ")+"はいつ行くのがいい？","雨や強風で避けたほうがいい日は？"];
+  $("askchips").innerHTML = qs.map(q=>'<button type="button" class="chip">'+esc(q)+'</button>').join("");
+  syncAsk();
+}
+$("askchips").addEventListener("click",e=>{const b=e.target.closest(".chip"); if(b){ $("askq").value=b.textContent; syncAsk(); }});
+$("askq").addEventListener("input",syncAsk);
+$("askcopy").addEventListener("click",async()=>{
+  const p=buildPrompt(); let ok=false;
+  try{ await navigator.clipboard.writeText(p); ok=true; }catch(e){ try{ const ta=$("askprev"); ta.closest("details").open=true; ta.focus(); ta.select(); ok=document.execCommand("copy"); }catch(e2){} }
+  $("askst").textContent = ok ? "コピーしました。Claude に貼り付けてください。" : "コピーできませんでした。「送る内容を確認」から選択してコピーしてください。";
+});
+
+function renderAll(){ renderHits(); renderGrid().then(renderAsk); }
 
 /* ---------- 起動 ---------- */
 async function start(force){
@@ -537,6 +600,8 @@ async function start(force){
 }
 $("th").value = threshold;
 $("reload").addEventListener("click",()=>{DET={};start(true)});
+$("span7").addEventListener("click",()=>{span=7;store.set("span",7);renderAll();renderDetail(false,false)});
+$("span14").addEventListener("click",()=>{span=14;store.set("span",14);renderAll();renderDetail(false,false)});
 $("views").addEventListener("click",e=>{const b=e.target.closest("[data-view]"); if(!b) return; view=b.dataset.view; area="すべて"; sortDay=-1; store.set("view2",view); renderGrid()});
 $("area").addEventListener("change",e=>{area=e.target.value;renderGrid()});
 $("th").addEventListener("change",e=>{const v=parseInt(e.target.value,10); if(v>0){threshold=v;store.set("th",v);renderAll();renderDetail(false,false)}});
