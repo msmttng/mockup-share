@@ -448,8 +448,36 @@ function mockHourly(r,models,seed){ // 動作確認用の合成データ
   });
   return {hourly:h,elevation:r.mid};
 }
-function calcRow(r,h,days){
-  const per = OV_MODELS.map(m=>pack(h,m)).filter(Boolean);
+/* ---------- 予備の気象データ（MET Norway）。Open-Meteo につながらないときだけ使う ---------- */
+const MET="met_no";
+async function metHourly(r){ // Open-Meteo と同じ形（1時間ごと・日本時間）に直す
+  const ac=new AbortController(), to=setTimeout(()=>ac.abort(),20000); let j;
+  try{ const res=await fetch("https://api.met.no/weatherapi/locationforecast/2.0/complete?lat="+r.lat.toFixed(3)+"&lon="+r.lon.toFixed(3)+"&altitude="+r.mid,{signal:ac.signal}); if(!res.ok) throw new Error("HTTP "+res.status); j=await res.json(); }
+  finally{ clearTimeout(to); }
+  const ts=j.properties.timeseries, N=DAYS*24, H9=9*3600e3;
+  const base=Math.floor((Date.now()+H9)/86400e3)*86400e3-H9;      // 今日の日本時間 0時
+  const p2=n=>String(n).padStart(2,"0");
+  const time=[]; for(let i=0;i<N;i++){ const d=new Date(base+i*3600e3+H9); time.push(d.getUTCFullYear()+"-"+p2(d.getUTCMonth()+1)+"-"+p2(d.getUTCDate())+"T"+p2(d.getUTCHours())+":00"); }
+  const mk=()=>new Array(N).fill(null), T=mk(),P=mk(),Hm=mk();
+  let prev=null;
+  ts.forEach(x=>{ const i=Math.round((Date.parse(x.time)-base)/3600e3), d=x.data.instant.details;
+    if(i>=0&&i<N){ T[i]=d.air_temperature; Hm[i]=d.relative_humidity; }
+    if(prev && i-prev.i>1){ for(let k=prev.i+1;k<i;k++){ if(k<0||k>=N) continue; const f=(k-prev.i)/(i-prev.i); T[k]=prev.t+(d.air_temperature-prev.t)*f; Hm[k]=prev.h+(d.relative_humidity-prev.h)*f; } }
+    prev={i,t:d.air_temperature,h:d.relative_humidity};
+    const n1=x.data.next_1_hours, n6=x.data.next_6_hours;
+    if(n1&&n1.details){ if(i>=0&&i<N) P[i]=n1.details.precipitation_amount; }
+    else if(n6&&n6.details){ for(let k=i;k<i+6;k++){ if(k>=0&&k<N&&P[k]==null) P[k]=n6.details.precipitation_amount/6; } }
+  });
+  const h={time}; h["temperature_2m_"+MET]=T; h["precipitation_"+MET]=P; h["relative_humidity_2m_"+MET]=Hm;
+  return {hourly:h};
+}
+async function metMany(list){ // 同時6件まで
+  const out=new Array(list.length); let k=0;
+  await Promise.all(Array.from({length:Math.min(6,list.length)},async()=>{ while(k<list.length){ const i=k++; try{ out[i]=await metHourly(list[i]); }catch(e){ out[i]=null; } } }));
+  return out;
+}
+function calcRow(r,h,days,models){
+  const per = (models||OV_MODELS).map(m=>pack(h,m)).filter(Boolean);
   return days.map(d=>{
     const ok = per.filter(s=>dayOK(s,d));
     const vals = ok.map(s=>d.idx.reduce((a,i)=>a+snowE(s,i,r,r.top),0));
@@ -473,10 +501,18 @@ async function loadOverview(list,force){ // list: 必要なスキー場だけ取
         "&hourly=temperature_2m,precipitation,relative_humidity_2m,temperature_925hPa,temperature_850hPa,temperature_700hPa&models="+OV_MODELS.join(",")+"&forecast_days="+DAYS+"&timezone=Asia%2FTokyo"); }
       catch(e){ // 取れないときは、前回取得した分が残っていればそれを出す
         if(list.every(r=>OV.rows[r.id]) && OV.dates){ OV.stale = e.message; return; }
-        throw e;
+        const rest = need.slice(k), alt = await metMany(rest), okI = alt.map((x,i)=>x?i:-1).filter(i=>i>=0);   // 予備データ源に切り替え
+        if(!okI.length) throw e;
+        const days2 = dayIndex(alt[okI[0]].hourly.time), dates2 = days2.map(d=>d.date);
+        if(!OV.dates || OV.dates[0]!==dates2[0]){ OV.rows={}; }
+        OV.dates = dates2;
+        okI.forEach(i=>{ OV.rows[rest[i].id] = {at:Date.now()-(CACHE_MIN-20)*60e3, days:calcRow(rest[i],alt[i].hourly,days2,[MET])}; });   // 20分後に本来のデータを取り直す
+        OV.at = Date.now(); OV.alt = e.message; OV.stale = null;
+        if(!MOCK) store.set("ov4",OV);
+        return;
       }
     }
-    OV.stale = null;
+    OV.stale = null; OV.alt = null;
     if(arr.length!==part.length) throw new Error("スキー場の数と応答の数が合いません");
     const days = dayIndex(arr[0].hourly.time), dates = days.map(d=>d.date);
     if(!OV.dates || OV.dates[0]!==dates[0]){ OV.rows={}; }   // 日付が変わったら古い分は捨てる
@@ -491,11 +527,13 @@ async function loadDetail(r,force){
   if(!force && c && Date.now()-c.at < CACHE_MIN*60e3) return c;
   let arr;
   if(MOCK) arr=[mockHourly(r,MODELS.map(m=>m[0]),R.indexOf(r))];
-  else arr = await getJSON(API+"?latitude="+r.lat+"&longitude="+r.lon+"&elevation="+r.mid+
+  let alt=false;
+  if(!MOCK) try{ arr = await getJSON(API+"?latitude="+r.lat+"&longitude="+r.lon+"&elevation="+r.mid+
     "&hourly=temperature_2m,precipitation,relative_humidity_2m,wind_gusts_10m,freezing_level_height,temperature_925hPa,temperature_850hPa,temperature_700hPa,wind_speed_925hPa,wind_speed_850hPa,wind_speed_700hPa,wind_direction_925hPa,wind_direction_850hPa,wind_direction_700hPa&models="+MODELS.map(m=>m[0]).join(",")+
-    "&forecast_days="+DAYS+"&timezone=Asia%2FTokyo&wind_speed_unit=ms");
+    "&forecast_days="+DAYS+"&timezone=Asia%2FTokyo&wind_speed_unit=ms"); }
+  catch(e){ try{ arr=[await metHourly(r)]; alt=true; }catch(e2){ throw e; } }
   const h = arr[0].hourly, time = h.time, days = dayIndex(time);
-  const ms = MODELS.map(([m,label])=>{ const x=pack(h,m); if(x) x.label=label; return x; }).filter(Boolean);
+  const ms = (alt?[[MET,"MET Norway（予備）"]]:MODELS).map(([m,label])=>{ const x=pack(h,m); if(x) x.label=label; return x; }).filter(Boolean);
   if(!ms.length) throw new Error("使えるモデルのデータがありません");
   const levels = [["山頂",r.top],["中腹",r.mid],["山麓",r.base]];
   // 時間ごとの中央値（グラフ用）
@@ -532,7 +570,7 @@ async function loadDetail(r,force){
     const wdir = WT ? (Math.atan2(-U,-V)*180/Math.PI+360)%360 : null, wspd = WT ? SP/WT : null;
     return {date:d.date, top, lv, perModel, conf, q, gust, wtop, lift, am, fz, nOk: ok.length, prof, wdir, wspd};
   });
-  const res = {at:Date.now(), time, hourly, days:out, nModels:ms.length, dayStart:days.map(d=>d.idx[0])};
+  const res = {at: alt ? Date.now()-(CACHE_MIN-20)*60e3 : Date.now(), time, hourly, days:out, nModels:ms.length, dayStart:days.map(d=>d.idx[0]), alt};
   DET[r.id]=res; return res;
 }
 
@@ -740,8 +778,9 @@ async function renderGrid(){
   $("legend").innerHTML = [["1〜4",1],["5〜9",2],["10〜19",3],["20〜29",4],["30〜49",5],["50〜",6]].map(x=>'<span><i style="background:var(--s'+x[1]+')"></i>'+x[0]+'cm</span>').join("")+
     '<span><i style="box-shadow:inset 0 0 0 2px var(--warn);background:transparent"></i>パウダー基準以上</span><span>? = モデルの予想が割れている</span><span>日付を押すとその日で並べ替え</span>'+(span>7?'<span>8日目以降は精度が下がる参考値</span>':'');
   $("span7").classList.toggle("on",span===7); $("span14").classList.toggle("on",span===14);
-  $("updated").textContent = "取得 "+new Date(OV.at).toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})+(OV.stale?"（更新できず前回分）":"");
-  if(OV.stale) showMsg("最新の予報を取得できなかったため、前回取得した予報を表示しています（"+esc(OV.stale)+"）。",true);
+  $("updated").textContent = "取得 "+new Date(OV.at).toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})+(OV.alt?"（予備データ）":OV.stale?"（更新できず前回分）":"");
+  if(OV.alt) showMsg("気象データの提供元（Open-Meteo）につながらないため、予備のデータ（MET Norway・1モデル、約9日先まで）で表示しています。モデル比較・風・リフト判定は出ません。",true);
+  else if(OV.stale) showMsg("最新の予報を取得できなかったため、前回取得した予報を表示しています（"+esc(OV.stale)+"）。",true);
 }
 async function renderDetail(force,scroll){
   const r = R.find(x=>x.id===selected) || R[0], box=$("detail");
