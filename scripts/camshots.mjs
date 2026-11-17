@@ -86,11 +86,11 @@ async function shoot(t) {
       if (k) found.add("https://" + k[0]);
     };
     page.frames().forEach((f) => pick(f.url()));
-    const attrs = await page.evaluate(() =>
+    const attrs = await Promise.race([sleep(8000).then(() => []), page.evaluate(() =>
       [...document.querySelectorAll("iframe,a,[data-src],[data-video-id],[data-youtube-id]")].map((n) =>
         [n.getAttribute("src"), n.getAttribute("data-src"), n.getAttribute("href"), n.getAttribute("data-video-id") && "v=" + n.getAttribute("data-video-id"), n.getAttribute("data-youtube-id") && "v=" + n.getAttribute("data-youtube-id")].filter(Boolean).join(" ")
       )
-    ).catch(() => []);
+    ).catch(() => [])]);
     attrs.forEach((a) => a.split(" ").forEach(pick));
     t.found = [...found].slice(0, 12);
     const sh = await page.evaluate(() => document.documentElement.scrollHeight);
@@ -110,10 +110,14 @@ async function shoot(t) {
   }
 }
 const queue = [...pages];
-await Promise.all(Array.from({ length: 4 }, async () => { while (queue.length) await shoot(queue.shift()); }));
-await browser.close();
+// 1ページ最大70秒で打ち切る（応答しないページで全体が止まらないように）
+const guarded = (t) => Promise.race([shoot(t), sleep(70000).then(() => {
+  if (!shots[t.key]) { shots[t.key] = { ok: false, at: now(), error: "timeout 70s", found: t.found }; console.log(`FAIL ${t.key}: timeout`); }
+})]);
+await Promise.all(Array.from({ length: 4 }, async () => { while (queue.length) await guarded(queue.shift()); }));
+await Promise.race([browser.close(), sleep(15000)]);
 
 await writeFile(`${OUT}/index.json`, JSON.stringify({ generatedAt: now(), shots }, null, 2) + "\n", "utf8");
 const ok = Object.values(shots).filter((s) => s.ok).length;
 console.log(`done: ${ok}/${Object.keys(shots).length} ok`);
-if (ok === 0) process.exit(1);
+process.exit(ok === 0 ? 1 : 0);
