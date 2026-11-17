@@ -77,6 +77,22 @@ async function shoot(t) {
       });
     }).catch(() => {});
     await sleep(2000);
+    // ページ内の YouTube・skiday の埋め込みを記録（撮影がうまくいかないカメラを差し替える手がかり）
+    const found = new Set();
+    const pick = (s) => {
+      const y = String(s).match(/(?:youtube(?:-nocookie)?\.com\/(?:embed|live)\/|youtu\.be\/|[?&]v=)([\w-]{11})/);
+      if (y) found.add("yt:" + y[1]);
+      const k = String(s).match(/skiday\.app\/[\w]+\/\d+\/embed/);
+      if (k) found.add("https://" + k[0]);
+    };
+    page.frames().forEach((f) => pick(f.url()));
+    const attrs = await page.evaluate(() =>
+      [...document.querySelectorAll("iframe,a,[data-src],[data-video-id],[data-youtube-id]")].map((n) =>
+        [n.getAttribute("src"), n.getAttribute("data-src"), n.getAttribute("href"), n.getAttribute("data-video-id") && "v=" + n.getAttribute("data-video-id"), n.getAttribute("data-youtube-id") && "v=" + n.getAttribute("data-youtube-id")].filter(Boolean).join(" ")
+      )
+    ).catch(() => []);
+    attrs.forEach((a) => a.split(" ").forEach(pick));
+    t.found = [...found].slice(0, 12);
     const sh = await page.evaluate(() => document.documentElement.scrollHeight);
     const height = Math.floor(Math.min(t.height, sh - t.top));
     if (!(height >= 1)) throw new Error(`clip height invalid (scrollHeight=${sh}, top=${t.top})`);
@@ -84,10 +100,10 @@ async function shoot(t) {
       path: `${OUT}/${t.key}.jpg`, type: "jpeg", quality: 70,
       clip: { x: 0, y: t.top, width: t.width, height }, fullPage: true,
     });
-    shots[t.key] = { ok: true, at: now() };
+    shots[t.key] = { ok: true, at: now(), found: t.found };
     console.log(`OK   ${t.key}`);
   } catch (e) {
-    shots[t.key] = { ok: false, at: now(), error: short(e) };
+    shots[t.key] = { ok: false, at: now(), error: short(e), found: t.found };
     console.log(`FAIL ${t.key}: ${short(e)}`);
   } finally {
     await context.close().catch(() => {});
