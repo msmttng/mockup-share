@@ -121,6 +121,42 @@ async function shoot(t) {
     ).catch(() => [])]);
     bigImgs.forEach((x) => found.add(x));
     t.found = [...found].slice(0, 12);
+    // skiday の積雪カメラは元画像をそのまま保存（余白や再生バーが入らない）
+    if (/skiday\.app/.test(t.url)) {
+      const src = await Promise.race([sleep(5000).then(() => ""), page.evaluate(() => {
+        const im = [...document.images].filter((i) => /camera_images/.test(i.currentSrc) && i.naturalWidth >= 300).sort((a, b) => b.naturalWidth - a.naturalWidth)[0];
+        return im ? im.currentSrc : "";
+      }).catch(() => "")]);
+      if (src) {
+        const r = await fetch(src, { headers: { "User-Agent": UA } });
+        if (r.ok) {
+          await writeFile(`${OUT}/${t.key}.jpg`, Buffer.from(await r.arrayBuffer()));
+          shots[t.key] = { ok: true, at: now(), found: t.found, via: "skiday-image" };
+          console.log(`OK   ${t.key} (skiday image)`);
+          return;
+        }
+      }
+    }
+    // 切り出し範囲の中で一番大きい画像・映像があれば、その部分だけを撮る
+    const rect = await Promise.race([sleep(5000).then(() => null), page.evaluate(({ top, height, width }) => {
+      let best = null, ba = 0;
+      for (const el of document.querySelectorAll("img,video,canvas")) {
+        const r = el.getBoundingClientRect(), y = r.top + scrollY;
+        const w = Math.min(r.right, width) - Math.max(r.left, 0), hh = r.height;
+        if (w < width * 0.5 || hh < 80) continue;
+        const ov = Math.min(y + hh, top + height) - Math.max(y, top);
+        if (ov < hh * 0.6) continue;
+        if (w * hh > ba) { ba = w * hh; best = { x: Math.max(r.left, 0), y, w, h: Math.min(hh, top + height + 40 - y) }; }
+      }
+      return best;
+    }, { top: t.top, height: t.height, width: t.width }).catch(() => null)]);
+    if (rect && rect.h >= 60) {
+      await page.screenshot({ path: `${OUT}/${t.key}.jpg`, type: "jpeg", quality: 70, fullPage: true,
+        clip: { x: Math.round(rect.x), y: Math.round(rect.y), width: Math.round(rect.w), height: Math.round(rect.h) } });
+      shots[t.key] = { ok: true, at: now(), found: t.found, via: "element" };
+      console.log(`OK   ${t.key} (element)`);
+      return;
+    }
     const sh = await page.evaluate(() => document.documentElement.scrollHeight);
     const height = Math.floor(Math.min(t.height, sh - t.top));
     if (!(height >= 1)) throw new Error(`clip height invalid (scrollHeight=${sh}, top=${t.top})`);
@@ -128,8 +164,8 @@ async function shoot(t) {
       path: `${OUT}/${t.key}.jpg`, type: "jpeg", quality: 70,
       clip: { x: 0, y: t.top, width: t.width, height }, fullPage: true,
     });
-    shots[t.key] = { ok: true, at: now(), found: t.found };
-    console.log(`OK   ${t.key}`);
+    shots[t.key] = { ok: true, at: now(), found: t.found, via: "crop" };
+    console.log(`OK   ${t.key} (crop)`);
   } catch (e) {
     shots[t.key] = { ok: false, at: now(), error: short(e), found: t.found };
     console.log(`FAIL ${t.key}: ${short(e)}`);
