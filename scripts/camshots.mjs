@@ -2,6 +2,7 @@
 // 撮影対象は yukiyomi.html の SITES から読み出す（一覧を二重に持たないため）。
 //   c.e = [top, h] … ページを幅360pxで開き、上から top〜top+h の範囲を撮る（アプリの切り出し表示と同じ範囲）
 //   c.y = [[YouTubeID, ラベル], …] … YouTube は撮影すると bot 確認画面になるので、配信のサムネイル画像を保存する
+//   c.i = [[画像URL, ラベル], …] … カメラ画像のファイルを直接置いているもの（野沢など）はそのまま保存する
 //   c.s = "rusutsu" … 個別設定で撮るカメラ（下の SPECIAL）
 // 画像名（キー）はアプリ側の shotKey() と同じ規則：e は「スキー場ID-番号」、y は「yt-動画ID」、s はその名前。
 import { chromium } from "playwright";
@@ -25,14 +26,16 @@ if (!m) throw new Error("yukiyomi.html に SITES が見つかりません");
 const SITES = JSON.parse(m[1]);
 const pages = []; // { key, url, top, height, width, wait }
 const tubes = new Set(); // YouTube 動画ID
+const images = []; // 画像ファイルを直接置いているカメラ { key, url }
 for (const [rid, st] of Object.entries(SITES)) {
   (st.cams || []).forEach((c, i) => {
     if (c.e) pages.push({ key: `${rid}-${i}`, url: c.u, top: c.e[0], height: c.e[1], width: W, wait: 7000 });
     if (c.s && SPECIAL[c.s]) pages.push({ key: c.s, url: c.u, ...SPECIAL[c.s] });
     (c.y || []).forEach(([id]) => tubes.add(id));
+    (c.i || []).forEach(([u], n) => images.push({ key: `${rid}-i${n}`, url: u }));
   });
 }
-console.log(`pages ${pages.length} / youtube ${tubes.size}`);
+console.log(`pages ${pages.length} / youtube ${tubes.size} / images ${images.length}`);
 
 await mkdir(OUT, { recursive: true });
 const shots = {};
@@ -55,6 +58,19 @@ for (const id of tubes) {
     } catch (e) { err = short(e); }
   }
   if (!saved) { shots[key] = { ok: false, at: now(), error: err }; console.log(`FAIL ${key}: ${err}`); }
+}
+
+// ---- 画像ファイル型：そのまま保存 ----
+for (const t of images) {
+  try {
+    const r = await fetch(t.url + (t.url.includes("?") ? "&" : "?") + "t=" + Date.now(), { headers: { "User-Agent": UA } });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const buf = Buffer.from(await r.arrayBuffer());
+    if (buf.length < 2000) throw new Error("too small");
+    await writeFile(`${OUT}/${t.key}.jpg`, buf);
+    shots[t.key] = { ok: true, at: now(), modified: r.headers.get("last-modified") || undefined };
+    console.log(`OK   ${t.key}`);
+  } catch (e) { shots[t.key] = { ok: false, at: now(), error: short(e) }; console.log(`FAIL ${t.key}: ${short(e)}`); }
 }
 
 // ---- ページ型：開いて切り出して撮影（4枚ずつ並行） ----
