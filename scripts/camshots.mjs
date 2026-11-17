@@ -179,6 +179,10 @@ const guarded = (t) => Promise.race([shoot(t), sleep(70000).then(() => {
   if (!shots[t.key]) { shots[t.key] = { ok: false, at: now(), error: "timeout 70s", found: t.found }; console.log(`FAIL ${t.key}: timeout`); }
 })]);
 await Promise.all(Array.from({ length: 4 }, async () => { while (queue.length) await guarded(queue.shift()); }));
+// 一時的な失敗（時間切れなど）は1回だけ撮り直す。配信元に画像がないものは撮り直さない
+const retry = pages.filter((t) => shots[t.key] && !shots[t.key].ok && !/配信元に画像なし/.test(shots[t.key].error || ""));
+if (retry.length) console.log(`retry ${retry.length}`);
+for (const t of retry) { delete shots[t.key]; await guarded(t); }
 await Promise.race([browser.close(), sleep(15000)]);
 
 await writeFile(`${OUT}/index.json`, JSON.stringify({ generatedAt: now(), shots }, null, 2) + "\n", "utf8");
