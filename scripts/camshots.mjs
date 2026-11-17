@@ -4,13 +4,8 @@ import { mkdir, writeFile } from "node:fs/promises";
 
 // top/height は切り出し範囲（CSSピクセル）。後で調整する。wait は読み込み後の待機(ms)。
 const TARGETS = [
-  { id: "happo", url: "https://www.happo-one.jp/gelande/livecamera/", top: 0, height: 1600, wait: 8000 },
-  { id: "tangram", url: "https://www.tangram.jp/ski/livecamera/", top: 0, height: 1600, wait: 8000 },
-  { id: "parada", url: "https://www.saku-parada.jp/ski/livecam/", top: 0, height: 1600, wait: 8000 },
-  { id: "shiga-yake", url: "https://www.princehotels.co.jp/ski/shiga/informations/weather_camera/", top: 0, height: 1600, wait: 8000 },
-  { id: "annupuri", url: "https://camstreamer.com/live/stream/749662862", top: 0, height: 1600, wait: 8000 },
-  { id: "rusutsu", url: "https://rusutsu.com/en/live-mountain-cams/", top: 0, height: 1600, wait: 8000 },
-  { id: "kokusai", url: "https://www.sapporo-kokusai.jp/live.php", top: 0, height: 1600, wait: 8000 },
+  // YouTube を使うカメラは撮影しても「bot確認」画面になるため、アプリ側で YouTube を直接埋め込む。ここは画像型のカメラだけ。
+  { id: "rusutsu", url: "https://rusutsu.com/en/live-mountain-cams/", top: 330, height: 390, wait: 8000 },
 ];
 
 const UA =

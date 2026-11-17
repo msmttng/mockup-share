@@ -2,8 +2,8 @@ name: camshots
 
 on:
   schedule:
-    # 日本時間 5:00〜18:59 の毎時 7分・37分（UTC 20〜23時, 0〜9時）
-    - cron: "7,37 20-23,0-9 * * *"
+    # 日本時間 7時・11時・15時に間に合うよう、各10分前に撮る（6:50 / 10:50 / 14:50 JST = UTC 21:50 / 1:50 / 5:50）
+    - cron: "50 21,1,5 * * *"
   workflow_dispatch:
   push:
     branches: [master]
