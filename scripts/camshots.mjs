@@ -106,7 +106,7 @@ async function shoot(t) {
     const pick = (s) => {
       const y = String(s).match(/(?:youtube(?:-nocookie)?\.com\/(?:embed|live)\/|youtu\.be\/|[?&]v=)([\w-]{11})/);
       if (y) found.add("yt:" + y[1]);
-      const k = String(s).match(/skiday\.app\/[\w]+\/\d+\/embed/);
+      const k = String(s).match(/skiday\.app\/\w+\/\w+\/embed/);
       if (k) found.add("https://" + k[0]);
     };
     page.frames().forEach((f) => pick(f.url()));
@@ -116,6 +116,10 @@ async function shoot(t) {
       )
     ).catch(() => [])]);
     attrs.forEach((a) => a.split(" ").forEach(pick));
+    const bigImgs = await Promise.race([sleep(5000).then(() => []), page.evaluate(() =>
+      [...document.images].filter((i) => i.naturalWidth >= 300).map((i) => `img:${i.naturalWidth}x${i.naturalHeight}@${Math.round(i.getBoundingClientRect().top + scrollY)} ${i.currentSrc.split("?")[0]}`).slice(0, 6)
+    ).catch(() => [])]);
+    bigImgs.forEach((x) => found.add(x));
     t.found = [...found].slice(0, 12);
     const sh = await page.evaluate(() => document.documentElement.scrollHeight);
     const height = Math.floor(Math.min(t.height, sh - t.top));
