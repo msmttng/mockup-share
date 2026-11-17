@@ -82,6 +82,9 @@ async function shoot(t) {
       window.scrollTo(0, 0);
     }).catch(() => {})]);
     await sleep(2500);
+    // 配信元に画像がない（skiday の「表示できる画像がありません」）ときは保存しない
+    const txt = await Promise.race([sleep(5000).then(() => ""), page.evaluate(() => document.body.innerText.slice(0, 4000)).catch(() => "")]);
+    if (/表示できる画像がありません/.test(txt)) throw new Error("配信元に画像なし");
     // ページ内の YouTube・skiday の埋め込みを記録（撮影がうまくいかないカメラを差し替える手がかり）
     const found = new Set();
     const pick = (s) => {
