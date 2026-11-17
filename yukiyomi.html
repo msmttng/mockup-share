@@ -184,7 +184,7 @@ footer a{color:var(--accent)}
 <div class="wrap">
   <header class="top">
     <h1><svg class="logo" viewBox="0 0 547.23 176.4" role="img" aria-label="ユキヨミ"><g transform="translate(38.2,38.2)"><g fill="none" stroke="currentColor" stroke-width="9.02" stroke-linecap="butt" stroke-linejoin="miter"><g transform="translate(0,0)"><path d="M23.6,38.2 H67.8 V76.4"/><line x1="10.6" y1="76.4" x2="89.4" y2="76.4"/></g><g transform="translate(123.61,0)"><line x1="14.6" y1="38.2" x2="85.4" y2="38.2"/><line x1="8.6" y1="61.8" x2="91.4" y2="61.8"/><line x1="42.2" y1="10.6" x2="57.8" y2="89.4"/></g><g transform="translate(247.22,0)"><path d="M19.6,23.6 H76.4 V76.4 H19.6"/><line x1="27.6" y1="50.0" x2="76.4" y2="50.0"/></g><g transform="translate(370.83,0)"><line x1="31.5" y1="17.8" x2="68.5" y2="27.4" stroke="#6fa9ee"/><line x1="26.5" y1="41.9" x2="73.5" y2="54.1" stroke="#3a78dd"/><line x1="20.1" y1="70.6" x2="79.9" y2="86.2" stroke="#3b3fc4"/></g></g></g></svg><small>国内スキー場の降雪予報 ・ 4つの気象モデルを比べて読む</small></h1>
-    <div class="meta"><span id="updated">読み込み中…</span><span id="ver" style="opacity:.6">v21</span><button class="btn" id="reload" type="button">最新に更新</button><button class="btn" id="camtoggle" type="button">ライブカメラ一覧</button></div>
+    <div class="meta"><span id="updated">読み込み中…</span><span id="ver" style="opacity:.6">v22</span><button class="btn" id="reload" type="button">最新に更新</button><button class="btn" id="camtoggle" type="button">ライブカメラ一覧</button></div>
   </header>
 
   <div id="msg"></div>
@@ -250,9 +250,9 @@ footer a{color:var(--accent)}
 /* 本体より先に読み込む見張り役: エラーが起きたら画面に出す。30秒たっても表示されなければ知らせる */
 (function(){
   function show(t){ try{ var m=document.getElementById("msg"); if(m) m.innerHTML='<div class="banner err">'+String(t).replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c]})+'</div>'; }catch(e){} }
-  window.addEventListener("error",function(e){ show("表示中にエラーが起きました（v21 11/17）: "+(e.message||"不明")+(e.lineno?" ／ 行 "+e.lineno:"")); });
-  window.addEventListener("unhandledrejection",function(e){ show("処理中にエラーが起きました（v21 11/17）: "+((e.reason&&e.reason.message)||e.reason||"不明")); });
-  setTimeout(function(){ var u=document.getElementById("updated"); if(u && u.textContent.indexOf("読み込み中")>=0 && !document.querySelector("#grid tr")) show("30秒たっても予報を表示できていません（v21 11/17）。「最新に更新」を押すか、ページを開き直してください。"); },30000);
+  window.addEventListener("error",function(e){ show("表示中にエラーが起きました（v22 11/17）: "+(e.message||"不明")+(e.lineno?" ／ 行 "+e.lineno:"")); });
+  window.addEventListener("unhandledrejection",function(e){ show("処理中にエラーが起きました（v22 11/17）: "+((e.reason&&e.reason.message)||e.reason||"不明")); });
+  setTimeout(function(){ var u=document.getElementById("updated"); if(u && u.textContent.indexOf("読み込み中")>=0 && !document.querySelector("#grid tr")) show("30秒たっても予報を表示できていません（v22 11/17）。「最新に更新」を押すか、ページを開き直してください。"); },30000);
 })();
 </script>
 <script>
@@ -949,7 +949,7 @@ function renderCamList(){
   const cams=r=>(SITES[r.id]||{}).cams||[], has=r=>cams(r).length>0, emb=r=>cams(r).some(c=>c.e||c.y||c.s);
   $("camviews").innerHTML=regs.map(v=>{ const a=R.filter(r=>r.region===v); return '<button type="button" class="btn'+(v===camRegion?" on":"")+'" data-reg="'+v+'">'+v+"（"+a.filter(has).length+"／"+a.length+"）</button>"; }).join("");
   const rows=R.filter(r=>r.region===camRegion);
-  $("camnote").textContent=camRegion+" "+rows.length+"か所のうち、"+rows.filter(emb).length+"か所は画像あり、"+(rows.filter(has).length-rows.filter(emb).length)+"か所はボタンで開きます。画像は毎日7時・11時・15時に撮影したものです。画像を押すとライブカメラ（YouTube はアプリ）が開きます。";
+  $("camnote").textContent=camRegion+" "+rows.length+"か所のうち、"+rows.filter(emb).length+"か所は画像あり"+((n=>n?"、"+n+"か所はボタンで開きます":"")(rows.filter(has).length-rows.filter(emb).length))+"。画像は毎日7時・11時・15時に撮影したものです。画像を押すとライブカメラ（YouTube はアプリ）が開きます。";
   let h="", cur="";
   rows.forEach(r=>{ if(r.area!==cur){ cur=r.area; h+='<div class="camarea">'+esc(cur)+'</div>'; }
     h+='<div class="camrow'+(has(r)?"":" none")+'"><span class="nm">'+esc(r.name)+'</span><span class="cams">'+camLinks(r)+'</span>'+camEmbeds(r)+'</div>'; });
