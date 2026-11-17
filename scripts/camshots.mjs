@@ -76,7 +76,12 @@ async function shoot(t) {
         try { v.muted = true; const p = v.play(); if (p && p.catch) p.catch(() => {}); } catch {}
       });
     }).catch(() => {});
-    await sleep(2000);
+    // 後から読み込まれる画像のため、いったん下までスクロールして戻す
+    await Promise.race([sleep(10000), page.evaluate(async () => {
+      for (let y = 0; y < Math.min(document.documentElement.scrollHeight, 6000); y += 400) { window.scrollTo(0, y); await new Promise((r) => setTimeout(r, 150)); }
+      window.scrollTo(0, 0);
+    }).catch(() => {})]);
+    await sleep(2500);
     // ページ内の YouTube・skiday の埋め込みを記録（撮影がうまくいかないカメラを差し替える手がかり）
     const found = new Set();
     const pick = (s) => {
