@@ -124,7 +124,13 @@ tr.sel td.name button.r{color:var(--accent)}
 .yt iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 .yt .cap,.shot .cap{position:absolute;left:0;top:0;z-index:3;font-size:11px;padding:2px 8px;background:rgba(0,0,0,.6);color:#fff;border-bottom-right-radius:8px;pointer-events:none}
 .shot{position:relative;display:block;max-width:420px;width:100%;flex:0 0 100%;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface2);margin:6px 0 2px}
-.shot img{display:block;width:100%;height:auto}
+.shot img{display:block;width:100%;height:auto;min-height:60px}
+.shot .when{position:absolute;right:0;top:0;z-index:3;font-size:11px;padding:2px 8px;background:rgba(0,0,0,.6);color:#fff;border-bottom-left-radius:8px;pointer-events:none}
+.shot .when:empty{display:none}
+.shot .go{position:absolute;right:8px;bottom:8px;z-index:3;font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;background:rgba(0,0,0,.65);color:#fff;pointer-events:none}
+.shot .nopic{display:none}
+.shot.miss img,.shot.miss .when{display:none}
+.shot.miss .nopic{display:block;padding:40px 12px 44px;text-align:center;font-size:13px;color:var(--muted)}
 .emb a.cover{position:absolute;inset:0;z-index:2}
 .emb .cap{position:absolute;left:0;bottom:0;z-index:3;font-size:11px;padding:2px 8px;background:rgba(0,0,0,.6);color:#fff;border-top-right-radius:8px;pointer-events:none}
 .camrow{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
@@ -178,7 +184,7 @@ footer a{color:var(--accent)}
 <div class="wrap">
   <header class="top">
     <h1><svg class="logo" viewBox="0 0 547.23 176.4" role="img" aria-label="ユキヨミ"><g transform="translate(38.2,38.2)"><g fill="none" stroke="currentColor" stroke-width="9.02" stroke-linecap="butt" stroke-linejoin="miter"><g transform="translate(0,0)"><path d="M23.6,38.2 H67.8 V76.4"/><line x1="10.6" y1="76.4" x2="89.4" y2="76.4"/></g><g transform="translate(123.61,0)"><line x1="14.6" y1="38.2" x2="85.4" y2="38.2"/><line x1="8.6" y1="61.8" x2="91.4" y2="61.8"/><line x1="42.2" y1="10.6" x2="57.8" y2="89.4"/></g><g transform="translate(247.22,0)"><path d="M19.6,23.6 H76.4 V76.4 H19.6"/><line x1="27.6" y1="50.0" x2="76.4" y2="50.0"/></g><g transform="translate(370.83,0)"><line x1="31.5" y1="17.8" x2="68.5" y2="27.4" stroke="#6fa9ee"/><line x1="26.5" y1="41.9" x2="73.5" y2="54.1" stroke="#3a78dd"/><line x1="20.1" y1="70.6" x2="79.9" y2="86.2" stroke="#3b3fc4"/></g></g></g></svg><small>国内スキー場の降雪予報 ・ 4つの気象モデルを比べて読む</small></h1>
-    <div class="meta"><span id="updated">読み込み中…</span><span id="ver" style="opacity:.6">v19</span><button class="btn" id="reload" type="button">最新に更新</button><button class="btn" id="camtoggle" type="button">ライブカメラ一覧</button></div>
+    <div class="meta"><span id="updated">読み込み中…</span><span id="ver" style="opacity:.6">v20</span><button class="btn" id="reload" type="button">最新に更新</button><button class="btn" id="camtoggle" type="button">ライブカメラ一覧</button></div>
   </header>
 
   <div id="msg"></div>
@@ -244,9 +250,9 @@ footer a{color:var(--accent)}
 /* 本体より先に読み込む見張り役: エラーが起きたら画面に出す。30秒たっても表示されなければ知らせる */
 (function(){
   function show(t){ try{ var m=document.getElementById("msg"); if(m) m.innerHTML='<div class="banner err">'+String(t).replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c]})+'</div>'; }catch(e){} }
-  window.addEventListener("error",function(e){ show("表示中にエラーが起きました（v19 11/17）: "+(e.message||"不明")+(e.lineno?" ／ 行 "+e.lineno:"")); });
-  window.addEventListener("unhandledrejection",function(e){ show("処理中にエラーが起きました（v19 11/17）: "+((e.reason&&e.reason.message)||e.reason||"不明")); });
-  setTimeout(function(){ var u=document.getElementById("updated"); if(u && u.textContent.indexOf("読み込み中")>=0 && !document.querySelector("#grid tr")) show("30秒たっても予報を表示できていません（v19 11/17）。「最新に更新」を押すか、ページを開き直してください。"); },30000);
+  window.addEventListener("error",function(e){ show("表示中にエラーが起きました（v20 11/17）: "+(e.message||"不明")+(e.lineno?" ／ 行 "+e.lineno:"")); });
+  window.addEventListener("unhandledrejection",function(e){ show("処理中にエラーが起きました（v20 11/17）: "+((e.reason&&e.reason.message)||e.reason||"不明")); });
+  setTimeout(function(){ var u=document.getElementById("updated"); if(u && u.textContent.indexOf("読み込み中")>=0 && !document.querySelector("#grid tr")) show("30秒たっても予報を表示できていません（v20 11/17）。「最新に更新」を押すか、ページを開き直してください。"); },30000);
 })();
 </script>
 <script>
@@ -736,7 +742,7 @@ function renderCams(r){
   el.innerHTML=(st.hp ? '<a href="'+esc(st.hp)+'" target="_blank" rel="noopener">公式サイト</a>' : '<a class="find" href="'+g("公式サイト")+'" target="_blank" rel="noopener">公式サイトを検索</a>')+
     list.map(c=>'<a href="'+esc(c.u)+'" target="_blank" rel="noopener"'+(c.t==="n"?' class="near"':'')+'>'+esc(c.l)+'</a>').join("")+
     '<a class="find" href="'+g("ライブカメラ")+'" target="_blank" rel="noopener">'+(list.length?"ほかのライブカメラを検索":"ライブカメラを検索")+'</a>';
-  const box=$("camemb"); if(box){ box.innerHTML=camEmbeds(r); sizeEmbeds(); shotTimes(); box.querySelectorAll("iframe[data-src]").forEach(f=>{ f.src=f.dataset.src; }); }
+  const box=$("camemb"); if(box){ box.innerHTML=camEmbeds(r); shotTimes(); }
 }
 
 /* ---------- アメダス実測（気象庁） ---------- */
@@ -917,18 +923,21 @@ function camLinks(r){ // 埋め込みできないカメラと公式サイトは�
     (list.length?"":'<a class="find" href="'+g("ライブカメラ")+'" target="_blank" rel="noopener">ライブカメラを検索</a>')+
     (st.hp?'<a class="near" href="'+esc(st.hp)+'" target="_blank" rel="noopener">公式サイト</a>':"");
 }
-function camEmbeds(r){ // カメラページのうち映像のある範囲だけを切り出して埋め込む。タップで元のページを開く
-  const SHOT="https://raw.githubusercontent.com/msmttng/mockup-share/camshots/";
-  const cs=(SITES[r.id]||{}).cams||[];
-  return cs.filter(c=>c.y).map(c=>c.y.map(v=>'<div class="yt"><iframe data-src="https://www.youtube-nocookie.com/embed/'+v[0]+'?playsinline=1&mute=1&rel=0" title="'+esc(r.name+" "+v[1])+'" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe><span class="cap">'+esc(v[1])+'</span></div>').join("")).join("")+
-    cs.filter(c=>c.s).map(c=>'<a class="shot" href="'+esc(c.u)+'" target="_blank" rel="noopener"><img alt="'+esc(r.name+" "+c.l)+'" loading="lazy" src="'+SHOT+c.s+'.jpg?t='+Math.floor(Date.now()/36e5)+'" onerror="this.parentNode.style.display=\'none\'"><span class="cap" data-shot="'+c.s+'">定期撮影の画像</span></a>').join("")+
-    cs.filter(c=>c.e).map(c=>'<div class="emb" data-top="'+c.e[0]+'" data-h="'+c.e[1]+'"><iframe data-src="'+esc(c.u)+'" title="'+esc(r.name+" "+c.l)+'" scrolling="no" sandbox="allow-scripts allow-same-origin allow-presentation" referrerpolicy="no-referrer-when-downgrade" tabindex="-1"></iframe>'+
-    '<a class="cover" href="'+esc(c.u)+'" target="_blank" rel="noopener" aria-label="'+esc(r.name+" "+c.l)+'を開く"></a><span class="cap">'+esc(c.l)+'</span></div>').join("");
+const SHOT="https://raw.githubusercontent.com/msmttng/mockup-share/camshots/";
+function camEmbeds(r){ // 各カメラは毎日7時・11時・15時に撮った画像で出す（軽くするため）。押すとライブが開く
+  const cs=(SITES[r.id]||{}).cams||[], t=Math.floor(Date.now()/36e5), out=[];
+  cs.forEach((c,i)=>{   // 画像名は scripts/camshots.mjs と同じ規則
+    if(c.y) c.y.forEach(v=>out.push({k:"yt-"+v[0],u:"https://www.youtube.com/watch?v="+v[0],l:v[1]}));
+    else if(c.s) out.push({k:c.s,u:c.u,l:c.l});
+    else if(c.e) out.push({k:r.id+"-"+i,u:c.u,l:c.l});
+  });
+  return out.map(x=>'<a class="shot" href="'+esc(x.u)+'" target="_blank" rel="noopener"><img alt="'+esc(r.name+" "+x.l)+'" loading="lazy" decoding="async" src="'+SHOT+x.k+'.jpg?t='+t+'" onerror="this.parentNode.classList.add(\'miss\')">'+
+    '<span class="cap">'+esc(x.l)+'</span><span class="when" data-shot="'+x.k+'"></span><span class="go">▶ ライブを見る</span><span class="nopic">撮影した画像はまだありません<br>押すとライブカメラを開きます</span></a>').join("");
 }
 let camIO=null;
 let SHOTIDX=null;
 function shotTimes(){ // 定期撮影の時刻を画像に表示する
-  const put=()=>document.querySelectorAll("[data-shot]").forEach(el=>{ const x=SHOTIDX&&SHOTIDX.shots&&SHOTIDX.shots[el.dataset.shot]; if(x&&x.at){ const d=new Date(x.at); el.textContent=(d.getMonth()+1)+"/"+d.getDate()+" "+d.getHours()+"時"+String(d.getMinutes()).padStart(2,"0")+"分ごろ撮影"; } });
+  const put=()=>document.querySelectorAll("[data-shot]").forEach(el=>{ const x=SHOTIDX&&SHOTIDX.shots&&SHOTIDX.shots[el.dataset.shot]; if(x&&x.ok&&x.at){ const d=new Date(new Date(x.at).getTime()+30*60e3); el.textContent=(d.getMonth()+1)+"/"+d.getDate()+" "+d.getHours()+"時の画像"; } });
   if(SHOTIDX) return put();
   fetch("https://raw.githubusercontent.com/msmttng/mockup-share/camshots/index.json?t="+Math.floor(Date.now()/36e5)).then(r=>r.json()).then(j=>{ SHOTIDX=j; put(); }).catch(()=>{});
 }
@@ -940,15 +949,11 @@ function renderCamList(){
   const cams=r=>(SITES[r.id]||{}).cams||[], has=r=>cams(r).length>0, emb=r=>cams(r).some(c=>c.e||c.y||c.s);
   $("camviews").innerHTML=regs.map(v=>{ const a=R.filter(r=>r.region===v); return '<button type="button" class="btn'+(v===camRegion?" on":"")+'" data-reg="'+v+'">'+v+"（"+a.filter(has).length+"／"+a.length+"）</button>"; }).join("");
   const rows=R.filter(r=>r.region===camRegion);
-  $("camnote").textContent=camRegion+" "+rows.length+"か所のうち、"+rows.filter(emb).length+"か所は映像をこの画面に表示、"+(rows.filter(has).length-rows.filter(emb).length)+"か所はボタンで開きます。YouTube の映像は再生ボタンで動きます。それ以外は映像をタップすると元のページが開きます。";
+  $("camnote").textContent=camRegion+" "+rows.length+"か所のうち、"+rows.filter(emb).length+"か所は画像あり、"+(rows.filter(has).length-rows.filter(emb).length)+"か所はボタンで開きます。画像は毎日7時・11時・15時に撮影したものです。画像を押すとライブカメラ（YouTube はアプリ）が開きます。";
   let h="", cur="";
   rows.forEach(r=>{ if(r.area!==cur){ cur=r.area; h+='<div class="camarea">'+esc(cur)+'</div>'; }
     h+='<div class="camrow'+(has(r)?"":" none")+'"><span class="nm">'+esc(r.name)+'</span><span class="cams">'+camLinks(r)+'</span>'+camEmbeds(r)+'</div>'; });
   $("cambody").innerHTML=h; sizeEmbeds(); shotTimes();
-  if(camIO) camIO.disconnect();
-  const load=el=>{ const f=el.querySelector("iframe"); if(f && !f.src && f.dataset.src) f.src=f.dataset.src; };
-  if("IntersectionObserver" in window){ camIO=new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting){ load(e.target); camIO.unobserve(e.target); } }),{rootMargin:"500px 0px"}); document.querySelectorAll("#cambody .emb,#cambody .yt").forEach(el=>camIO.observe(el)); }
-  else document.querySelectorAll("#cambody .emb,#cambody .yt").forEach(load);
 }
 function setCamView(on){
   document.querySelector(".wrap").classList.toggle("camview",on);
