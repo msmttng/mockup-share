@@ -185,7 +185,7 @@ if (retry.length) console.log(`retry ${retry.length}`);
 for (const t of retry) { delete shots[t.key]; await guarded(t); }
 await Promise.race([browser.close(), sleep(15000)]);
 
-await writeFile(`${OUT}/index.json`, JSON.stringify({ generatedAt: now(), shots }, null, 2) + "\n", "utf8");
+await writeFile(`${OUT}/index.json`, JSON.stringify({ generatedAt: now(), slot: process.env.SLOT || "", shots }, null, 2) + "\n", "utf8");
 const ok = Object.values(shots).filter((s) => s.ok).length;
 console.log(`done: ${ok}/${Object.keys(shots).length} ok`);
 process.exit(ok === 0 ? 1 : 0);

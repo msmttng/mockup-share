@@ -2,8 +2,10 @@ name: camshots
 
 on:
   schedule:
-    # 日本時間 7時・11時・15時に間に合うよう、各10分前に撮る（6:50 / 10:50 / 14:50 JST = UTC 21:50 / 1:50 / 5:50）
-    - cron: "50 21,1,5 * * *"
+    # GitHub の定時実行は数時間遅れたり抜けたりするので、日本時間 5:50〜16:50 の毎時50分に起動し、
+    # 「7時枠（6〜9時台）・11時枠（10〜13時台）・15時枠（14〜17時台）」をまだ撮っていなければ撮る。
+    # 18時以降・早朝に遅れて起動した分は撮らない（夜の暗い画像で上書きしないため）。
+    - cron: "50 20-23,0-7 * * *"
   workflow_dispatch:
   push:
     branches: [master]
@@ -17,29 +19,49 @@ permissions:
 
 concurrency:
   group: camshots
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   shoot:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
+      - name: Decide slot (7時・11時・15時のどの枠か)
+        id: slot
+        run: |
+          H=$(TZ=Asia/Tokyo date +%H); D=$(TZ=Asia/Tokyo date +%Y-%m-%d)
+          case "$H" in 06|07|08|09) S=07;; 10|11|12|13) S=11;; 14|15|16|17) S=15;; *) S="";; esac
+          echo "JST hour=$H slot=$S event=${{ github.event_name }}"
+          if [ "${{ github.event_name }}" != "schedule" ]; then echo "slot=${S:+$D-$S}" >> "$GITHUB_OUTPUT"; echo "run=1" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [ -z "$S" ]; then echo "撮影時間外なので撮らない"; echo "run=0" >> "$GITHUB_OUTPUT"; exit 0; fi
+          LAST=$(curl -fsS "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/camshots/index.json?t=$(date +%s)" | jq -r '.slot // empty' || true)
+          echo "last slot=$LAST"
+          if [ "$LAST" = "$D-$S" ]; then echo "この枠は撮影済み"; echo "run=0" >> "$GITHUB_OUTPUT"; exit 0; fi
+          echo "slot=$D-$S" >> "$GITHUB_OUTPUT"; echo "run=1" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
+        if: steps.slot.outputs.run == '1'
       - uses: actions/setup-node@v4
+        if: steps.slot.outputs.run == '1'
         with:
           node-version: 20
       - name: Install playwright
+        if: steps.slot.outputs.run == '1'
         run: |
           npm install --no-save playwright@1.48.2
           npx playwright install --with-deps chromium
       - name: Take screenshots
+        if: steps.slot.outputs.run == '1'
+        env:
+          SLOT: ${{ steps.slot.outputs.slot }}
         run: node scripts/camshots.mjs
       - name: Shrink images (width 640px)
+        if: steps.slot.outputs.run == '1'
         run: |
           command -v mogrify >/dev/null || (sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick)
           mogrify -resize '640x>' -strip -quality 72 out/*.jpg
           du -sh out
       - name: Publish to camshots branch (orphan, force push)
+        if: steps.slot.outputs.run == '1'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
