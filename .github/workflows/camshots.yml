@@ -62,8 +62,8 @@ jobs:
             done
           done
           if [ "$EVENT" = "push" ] || { [ "$EVENT" = "workflow_dispatch" ] && [ "$RELAY" != "true" ]; }; then
-            # push・手動実行：すぐ撮る（枠は「過ぎて3時間以内」の枠があればそれ、なければ空）
-            if [ $SHOOT = 0 ]; then SLOT=""; fi
+            # push・手動実行：すぐ撮る（枠は「過ぎて3時間以内」でまだの枠があればそれ、なければ前回の枠のまま）
+            if [ $SHOOT = 0 ]; then SLOT="$LAST"; fi
             SHOOT=1; TARGET=0; SLEEP=0
           elif [ $SHOOT = 1 ]; then
             SLEEP=0
