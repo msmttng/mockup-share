@@ -2,10 +2,10 @@ name: camshots
 
 on:
   schedule:
-    # GitHub の定時実行は数時間遅れたり抜けたりするので、日本時間 5:50〜16:50 の毎時50分に起動し、
-    # 「7時枠（6〜9時台）・11時枠（10〜13時台）・15時枠（14〜17時台）」をまだ撮っていなければ撮る。
-    # 18時以降・早朝に遅れて起動した分は撮らない（夜の暗い画像で上書きしないため）。
-    - cron: "50 20-23,0-7 * * *"
+    # GitHub の定時実行は数時間遅れたり抜けたりする。そこで日本時間 4:10〜17:40 の30分おきに起動し、
+    # 撮影時刻（7:00・11:00・15:00）の3時間前以内なら準備してその時刻まで待ってから撮る。
+    # 撮影時刻を過ぎて3時間以内に起動した場合で、まだ撮っていなければすぐ撮る。同時に動くのは1つだけ。
+    - cron: "10,40 19-23,0-8 * * *"
   workflow_dispatch:
   push:
     branches: [master]
@@ -24,20 +24,37 @@ concurrency:
 jobs:
   shoot:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 220
     steps:
-      - name: Decide slot (7時・11時・15時のどの枠か)
+      - name: Decide slot (7時・11時・15時のどの枠を撮るか)
         id: slot
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
         run: |
-          H=$(TZ=Asia/Tokyo date +%H); D=$(TZ=Asia/Tokyo date +%Y-%m-%d)
-          case "$H" in 06|07|08|09) S=07;; 10|11|12|13) S=11;; 14|15|16|17) S=15;; *) S="";; esac
-          echo "JST hour=$H slot=$S event=${{ github.event_name }}"
-          if [ "${{ github.event_name }}" != "schedule" ]; then echo "slot=${S:+$D-$S}" >> "$GITHUB_OUTPUT"; echo "run=1" >> "$GITHUB_OUTPUT"; exit 0; fi
-          if [ -z "$S" ]; then echo "撮影時間外なので撮らない"; echo "run=0" >> "$GITHUB_OUTPUT"; exit 0; fi
-          LAST=$(curl -fsS "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/camshots/index.json?t=$(date +%s)" | jq -r '.slot // empty' || true)
-          echo "last slot=$LAST"
-          if [ "$LAST" = "$D-$S" ]; then echo "この枠は撮影済み"; echo "run=0" >> "$GITHUB_OUTPUT"; exit 0; fi
-          echo "slot=$D-$S" >> "$GITHUB_OUTPUT"; echo "run=1" >> "$GITHUB_OUTPUT"
+          D=$(TZ=Asia/Tokyo date +%Y-%m-%d)
+          H=$(TZ=Asia/Tokyo date +%-H); M=$(TZ=Asia/Tokyo date +%-M)
+          NOW=$((H*60+M))
+          # 最後に撮った枠（キャッシュのない API で読む）
+          LAST=$(gh api "repos/${GITHUB_REPOSITORY}/contents/index.json?ref=camshots" -H "Accept: application/vnd.github.raw" 2>/dev/null | jq -r '.slot // empty' || true)
+          echo "JST $H:$M event=$EVENT last=$LAST"
+          RUN=0; SLOT=""; WAIT=0
+          # 1) 撮影時刻を過ぎて3時間以内で、まだ撮っていない枠 → すぐ撮る
+          for T in 7 11 15; do S=$(printf '%s-%02d' "$D" "$T"); TM=$((T*60))
+            if [ $NOW -ge $TM ] && [ $((NOW-TM)) -lt 180 ]; then
+              if [ "$EVENT" != "schedule" ] || [ "$LAST" != "$S" ]; then RUN=1; SLOT=$S; WAIT=0; fi
+            fi
+          done
+          # 2) 次の撮影時刻まで3時間以内で、まだ撮っていない枠 → その時刻まで待って撮る（定時起動のときだけ）
+          if [ $RUN = 0 ] && [ "$EVENT" = "schedule" ]; then
+            for T in 7 11 15; do S=$(printf '%s-%02d' "$D" "$T"); TM=$((T*60))
+              if [ $NOW -lt $TM ] && [ $((TM-NOW)) -le 180 ] && [ "$LAST" != "$S" ]; then RUN=1; SLOT=$S; WAIT=$(TZ=Asia/Tokyo date -d "$D $T:00:00" +%s); break; fi
+            done
+          fi
+          # 手動・push のときは時刻に関係なくすぐ撮る
+          if [ "$EVENT" != "schedule" ]; then RUN=1; WAIT=0; fi
+          echo "run=$RUN slot=$SLOT target_epoch=$WAIT"
+          { echo "run=$RUN"; echo "slot=$SLOT"; echo "wait=$WAIT"; } >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
         if: steps.slot.outputs.run == '1'
       - uses: actions/setup-node@v4
@@ -49,6 +66,11 @@ jobs:
         run: |
           npm install --no-save playwright@1.48.2
           npx playwright install --with-deps chromium
+      - name: Wait until the shooting time
+        if: steps.slot.outputs.run == '1' && steps.slot.outputs.wait != '0'
+        run: |
+          W=$(( ${{ steps.slot.outputs.wait }} - $(date +%s) ))   # 撮影時刻（7:00/11:00/15:00）までの秒数
+          if [ $W -gt 0 ]; then echo "sleep ${W}s until $(TZ=Asia/Tokyo date -d "@${{ steps.slot.outputs.wait }}" +%H:%M:%S) JST"; sleep $W; fi
       - name: Take screenshots
         if: steps.slot.outputs.run == '1'
         env:
