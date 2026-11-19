@@ -61,7 +61,9 @@ jobs:
               if [ $NOW -lt $TE ]; then SLOT=$S; TARGET=$TE; break 2; fi
             done
           done
-          if [ "$EVENT" = "push" ] || { [ "$EVENT" = "workflow_dispatch" ] && [ "$RELAY" != "true" ]; }; then
+          HOUR=$(TZ=Asia/Tokyo date +%-H)
+          if { [ "$EVENT" = "push" ] || { [ "$EVENT" = "workflow_dispatch" ] && [ "$RELAY" != "true" ]; }; } && [ $HOUR -ge 6 ] && [ $HOUR -lt 18 ]; then
+            # push・手動実行は、昼（6〜17時台）ならすぐ撮る。夜はリレーと同じく次の撮影時刻まで待つ
             # push・手動実行：すぐ撮る（枠は「過ぎて3時間以内」でまだの枠があればそれ、なければ前回の枠のまま）
             if [ $SHOOT = 0 ]; then SLOT="$LAST"; fi
             SHOOT=1; TARGET=0; SLEEP=0
