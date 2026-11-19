@@ -1,12 +1,22 @@
 name: camshots
 
+# ユキヨミのライブカメラを毎日 7:00・11:00・15:00（日本時間）に撮る。
+#
+# GitHub の定時実行（schedule）は何時間も遅れたり来なかったりするので、「リレー方式」にしている：
+#   1回の実行が「次の撮影時刻まで待って撮る」を行い、終わったら自分で次の回を起動する（workflow_dispatch）。
+#   1回の実行は最長6時間なので、次の撮影まで遠い夜の間は5時間半待って次の回へ引き継ぐだけにする。
+#   同時に動くのは1つ（concurrency）。順番待ちが既にあれば次の回は起動しないので、リレーが2本に増えない。
+# schedule は、リレーが途切れたときに再開させるための保険。push・手動実行はすぐ撮ってからリレーにつなぐ。
+
 on:
   schedule:
-    # GitHub の定時実行は数時間遅れたり抜けたりする。そこで日本時間 4:10〜17:40 の30分おきに起動し、
-    # 撮影時刻（7:00・11:00・15:00）の3時間前以内なら準備してその時刻まで待ってから撮る。
-    # 撮影時刻を過ぎて3時間以内に起動した場合で、まだ撮っていなければすぐ撮る。同時に動くのは1つだけ。
     - cron: "10,40 19-23,0-8 * * *"
   workflow_dispatch:
+    inputs:
+      relay:
+        description: "リレーで起動された回（次の撮影時刻まで待つ）"
+        type: boolean
+        default: false
   push:
     branches: [master]
     paths:
@@ -16,6 +26,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: camshots
@@ -24,68 +35,81 @@ concurrency:
 jobs:
   shoot:
     runs-on: ubuntu-latest
-    timeout-minutes: 220
+    timeout-minutes: 355
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
-      - name: Decide slot (7時・11時・15時のどの枠を撮るか)
-        id: slot
+      - name: Decide what to do (撮る枠と待つ時間を決める)
+        id: plan
         env:
-          GH_TOKEN: ${{ github.token }}
           EVENT: ${{ github.event_name }}
+          RELAY: ${{ inputs.relay }}
         run: |
+          NOW=$(date +%s)
           D=$(TZ=Asia/Tokyo date +%Y-%m-%d)
-          H=$(TZ=Asia/Tokyo date +%-H); M=$(TZ=Asia/Tokyo date +%-M)
-          NOW=$((H*60+M))
-          # 最後に撮った枠（キャッシュのない API で読む）
           LAST=$(gh api "repos/${GITHUB_REPOSITORY}/contents/index.json?ref=camshots" -H "Accept: application/vnd.github.raw" 2>/dev/null | jq -r '.slot // empty' || true)
-          echo "JST $H:$M event=$EVENT last=$LAST"
-          RUN=0; SLOT=""; WAIT=0
-          # 1) 撮影時刻を過ぎて3時間以内で、まだ撮っていない枠 → すぐ撮る
-          for T in 7 11 15; do S=$(printf '%s-%02d' "$D" "$T"); TM=$((T*60))
-            if [ $NOW -ge $TM ] && [ $((NOW-TM)) -lt 180 ]; then
-              if [ "$EVENT" != "schedule" ] || [ "$LAST" != "$S" ]; then RUN=1; SLOT=$S; WAIT=0; fi
-            fi
-          done
-          # 2) 次の撮影時刻まで3時間以内で、まだ撮っていない枠 → その時刻まで待って撮る（定時起動のときだけ）
-          if [ $RUN = 0 ] && [ "$EVENT" = "schedule" ]; then
-            for T in 7 11 15; do S=$(printf '%s-%02d' "$D" "$T"); TM=$((T*60))
-              if [ $NOW -lt $TM ] && [ $((TM-NOW)) -le 180 ] && [ "$LAST" != "$S" ]; then RUN=1; SLOT=$S; WAIT=$(TZ=Asia/Tokyo date -d "$D $T:00:00" +%s); break; fi
+          echo "now $(TZ=Asia/Tokyo date '+%m/%d %H:%M') JST  event=$EVENT relay=$RELAY  last=$LAST"
+          SHOOT=0; SLOT=""; TARGET=0
+          # 今日と明日の撮影時刻を順に見る
+          for DAY in "$D" "$(TZ=Asia/Tokyo date -d tomorrow +%Y-%m-%d)"; do
+            for T in 07 11 15; do
+              S="$DAY-$T"; TE=$(TZ=Asia/Tokyo date -d "$DAY $T:00:00" +%s)
+              if [ "$S" = "$LAST" ]; then continue; fi
+              # 撮影時刻を過ぎて3時間以内でまだ撮っていない → すぐ撮る
+              if [ $NOW -ge $TE ] && [ $((NOW-TE)) -lt 10800 ]; then SHOOT=1; SLOT=$S; TARGET=0; break 2; fi
+              # これからの撮影時刻のうち最初のもの
+              if [ $NOW -lt $TE ]; then SLOT=$S; TARGET=$TE; break 2; fi
             done
+          done
+          if [ "$EVENT" = "push" ] || { [ "$EVENT" = "workflow_dispatch" ] && [ "$RELAY" != "true" ]; }; then
+            # push・手動実行：すぐ撮る（枠は「過ぎて3時間以内」の枠があればそれ、なければ空）
+            if [ $SHOOT = 0 ]; then SLOT=""; fi
+            SHOOT=1; TARGET=0; SLEEP=0
+          elif [ $SHOOT = 1 ]; then
+            SLEEP=0
+          else
+            LEFT=$((TARGET-NOW))
+            if [ $LEFT -le 20400 ]; then SHOOT=1; SLEEP=$LEFT          # 5時間40分以内 → その時刻まで待って撮る
+            else SHOOT=0; SLEEP=19800; fi                             # まだ遠い → 5時間半待って次の回へ引き継ぐ
           fi
-          # 手動・push のときは時刻に関係なくすぐ撮る
-          if [ "$EVENT" != "schedule" ]; then RUN=1; WAIT=0; fi
-          echo "run=$RUN slot=$SLOT target_epoch=$WAIT"
-          { echo "run=$RUN"; echo "slot=$SLOT"; echo "wait=$WAIT"; } >> "$GITHUB_OUTPUT"
+          echo "shoot=$SHOOT slot=$SLOT sleep=${SLEEP}s target=$( [ $TARGET -gt 0 ] && TZ=Asia/Tokyo date -d "@$TARGET" '+%m/%d %H:%M' )"
+          { echo "shoot=$SHOOT"; echo "slot=$SLOT"; echo "target=$TARGET"; echo "sleep=$SLEEP"; } >> "$GITHUB_OUTPUT"
+
       - uses: actions/checkout@v4
-        if: steps.slot.outputs.run == '1'
+        if: steps.plan.outputs.shoot == '1'
       - uses: actions/setup-node@v4
-        if: steps.slot.outputs.run == '1'
+        if: steps.plan.outputs.shoot == '1'
         with:
           node-version: 20
       - name: Install playwright
-        if: steps.slot.outputs.run == '1'
+        if: steps.plan.outputs.shoot == '1'
         run: |
           npm install --no-save playwright@1.48.2
           npx playwright install --with-deps chromium
-      - name: Wait until the shooting time
-        if: steps.slot.outputs.run == '1' && steps.slot.outputs.wait != '0'
+
+      - name: Wait (撮影時刻まで、または次の回への引き継ぎまで待つ)
+        if: steps.plan.outputs.sleep != '0'
         run: |
-          W=$(( ${{ steps.slot.outputs.wait }} - $(date +%s) ))   # 撮影時刻（7:00/11:00/15:00）までの秒数
-          if [ $W -gt 0 ]; then echo "sleep ${W}s until $(TZ=Asia/Tokyo date -d "@${{ steps.slot.outputs.wait }}" +%H:%M:%S) JST"; sleep $W; fi
+          if [ "${{ steps.plan.outputs.target }}" != "0" ] && [ "${{ steps.plan.outputs.shoot }}" = "1" ]; then
+            W=$(( ${{ steps.plan.outputs.target }} - $(date +%s) ))
+          else
+            W=${{ steps.plan.outputs.sleep }}
+          fi
+          if [ $W -gt 0 ]; then echo "sleep ${W}s → $(TZ=Asia/Tokyo date -d "+${W} sec" '+%m/%d %H:%M:%S') JST"; sleep $W; fi
+
       - name: Take screenshots
-        if: steps.slot.outputs.run == '1'
+        if: steps.plan.outputs.shoot == '1'
         env:
-          SLOT: ${{ steps.slot.outputs.slot }}
+          SLOT: ${{ steps.plan.outputs.slot }}
         run: node scripts/camshots.mjs
       - name: Shrink images (width 640px)
-        if: steps.slot.outputs.run == '1'
+        if: steps.plan.outputs.shoot == '1'
         run: |
           command -v mogrify >/dev/null || (sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick)
           mogrify -resize '640x>' -strip -quality 72 out/*.jpg
           du -sh out
       - name: Publish to camshots branch (orphan, force push)
-        if: steps.slot.outputs.run == '1'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: steps.plan.outputs.shoot == '1'
         run: |
           cd out
           git init -b camshots
@@ -93,4 +117,15 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git commit -m "camshots $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          git push --force "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" camshots
+          git push --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" camshots
+
+      - name: Start the next run (リレー)
+        if: always()
+        run: |
+          # 順番待ちの回が既にあれば、それがリレーを引き継ぐので起動しない
+          WAITING=$(gh run list -R "$GITHUB_REPOSITORY" -w camshots.yml --json databaseId,status -q "[.[] | select(.databaseId != ${{ github.run_id }}) | select(.status == \"queued\" or .status == \"pending\" or .status == \"waiting\" or .status == \"in_progress\")] | length")
+          echo "other active runs: $WAITING"
+          if [ "${WAITING:-0}" = "0" ]; then
+            gh workflow run camshots.yml -R "$GITHUB_REPOSITORY" --ref master -f relay=true
+            echo "next run started"
+          fi
