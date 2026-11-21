@@ -1,0 +1,548 @@
+{
+  "generatedAt": "2026-11-21T06:02:05.059Z",
+  "slot": "2026-11-21-15",
+  "shots": {
+    "yt-21HCv58C99o": {
+      "ok": true,
+      "at": "2026-11-21T06:00:01.639Z",
+      "src": "maxresdefault_live"
+    },
+    "yt-9ej1bDX8Kd8": {
+      "ok": true,
+      "at": "2026-11-21T06:00:02.280Z",
+      "src": "maxresdefault_live"
+    },
+    "yt-hMY3VnL4Pyk": {
+      "ok": true,
+      "at": "2026-11-21T06:00:02.933Z",
+      "src": "maxresdefault_live"
+    },
+    "yt-BHo4tHKIDow": {
+      "ok": true,
+      "at": "2026-11-21T06:00:03.308Z",
+      "src": "maxresdefault_live"
+    },
+    "yt-YKxPROaRqXs": {
+      "ok": true,
+      "at": "2026-11-21T06:00:03.708Z",
+      "src": "maxresdefault_live"
+    },
+    "yt-AiUwJwGAXn4": {
+      "ok": true,
+      "at": "2026-11-21T06:00:04.114Z",
+      "src": "maxresdefault_live"
+    },
+    "yt-Om32k-s0PSg": {
+      "ok": true,
+      "at": "2026-11-21T06:00:04.244Z",
+      "src": "maxresdefault_live"
+    },
+    "yt-KyujejCUiIM": {
+      "ok": true,
+      "at": "2026-11-21T06:00:04.406Z",
+      "src": "maxresdefault_live"
+    },
+    "yt-Kn6H5GpitJk": {
+      "ok": true,
+      "at": "2026-11-21T06:00:04.818Z",
+      "src": "maxresdefault_live"
+    },
+    "yt-4F0Y_9SO3-0": {
+      "ok": true,
+      "at": "2026-11-21T06:00:05.539Z",
+      "src": "maxresdefault_live"
+    },
+    "yt-LQ_Cv4aFuq8": {
+      "ok": true,
+      "at": "2026-11-21T06:00:06.266Z",
+      "src": "maxresdefault_live"
+    },
+    "yt-taDZzy8yMTw": {
+      "ok": true,
+      "at": "2026-11-21T06:00:06.288Z",
+      "src": "maxresdefault_live"
+    },
+    "yt-1ksmiy6EsDo": {
+      "ok": true,
+      "at": "2026-11-21T06:00:06.369Z",
+      "src": "maxresdefault_live"
+    },
+    "yt-w1BuUCVYdsQ": {
+      "ok": true,
+      "at": "2026-11-21T06:00:06.805Z",
+      "src": "maxresdefault_live"
+    },
+    "yt-WMAL8MGGnRg": {
+      "ok": true,
+      "at": "2026-11-21T06:00:07.246Z",
+      "src": "maxresdefault_live"
+    },
+    "yt-z4xJYd7931A": {
+      "ok": true,
+      "at": "2026-11-21T06:00:07.665Z",
+      "src": "maxresdefault_live"
+    },
+    "yt-esFYniMlxC0": {
+      "ok": true,
+      "at": "2026-11-21T06:00:07.723Z",
+      "src": "maxresdefault_live"
+    },
+    "yt-q96NwhD6Lrw": {
+      "ok": true,
+      "at": "2026-11-21T06:00:07.923Z",
+      "src": "maxresdefault_live"
+    },
+    "yt-Y3bXHw8TA2o": {
+      "ok": true,
+      "at": "2026-11-21T06:00:08.321Z",
+      "src": "maxresdefault_live"
+    },
+    "yt-qtU23CdE7mU": {
+      "ok": true,
+      "at": "2026-11-21T06:00:08.850Z",
+      "src": "maxresdefault_live"
+    },
+    "yt-RVblxnP4Ry8": {
+      "ok": true,
+      "at": "2026-11-21T06:00:09.181Z",
+      "src": "maxresdefault_live"
+    },
+    "yt-aA-lYRXMbtQ": {
+      "ok": true,
+      "at": "2026-11-21T06:00:09.240Z",
+      "src": "maxresdefault_live"
+    },
+    "yt-Ba8mu-3ORa8": {
+      "ok": true,
+      "at": "2026-11-21T06:00:09.349Z",
+      "src": "maxresdefault_live"
+    },
+    "yt-SB0QLvP-u_A": {
+      "ok": true,
+      "at": "2026-11-21T06:00:09.932Z",
+      "src": "hqdefault_live"
+    },
+    "yt-xmDBEMbt-jg": {
+      "ok": true,
+      "at": "2026-11-21T06:00:10.302Z",
+      "src": "maxresdefault_live"
+    },
+    "yt-7KNcqGjH3NM": {
+      "ok": true,
+      "at": "2026-11-21T06:00:10.452Z",
+      "src": "hqdefault_live"
+    },
+    "yt-n4G4iQTme1g": {
+      "ok": true,
+      "at": "2026-11-21T06:00:10.791Z",
+      "src": "maxresdefault_live"
+    },
+    "yt-n23Kln_w9lQ": {
+      "ok": true,
+      "at": "2026-11-21T06:00:10.936Z",
+      "src": "maxresdefault_live"
+    },
+    "yt-U4lgc436cWY": {
+      "ok": true,
+      "at": "2026-11-21T06:00:11.609Z",
+      "src": "maxresdefault_live"
+    },
+    "yt-Q18wNlSzxL8": {
+      "ok": true,
+      "at": "2026-11-21T06:00:12.045Z",
+      "src": "maxresdefault_live"
+    },
+    "yt-WE6rq7xihKw": {
+      "ok": true,
+      "at": "2026-11-21T06:00:12.158Z",
+      "src": "maxresdefault_live"
+    },
+    "yt-OOyl_XSzYNo": {
+      "ok": true,
+      "at": "2026-11-21T06:00:12.261Z",
+      "src": "maxresdefault_live"
+    },
+    "yt-eLcfhDohW_0": {
+      "ok": true,
+      "at": "2026-11-21T06:00:12.408Z",
+      "src": "maxresdefault_live"
+    },
+    "yt-nzJj0EZxMqg": {
+      "ok": true,
+      "at": "2026-11-21T06:00:12.812Z",
+      "src": "maxresdefault_live"
+    },
+    "nozawa-i0": {
+      "ok": true,
+      "at": "2026-11-21T06:00:13.802Z",
+      "modified": "Sat, 21 Nov 2026 05:59:27 GMT"
+    },
+    "nozawa-i1": {
+      "ok": true,
+      "at": "2026-11-21T06:00:14.083Z",
+      "modified": "Sat, 21 Nov 2026 05:59:20 GMT"
+    },
+    "nozawa-i2": {
+      "ok": true,
+      "at": "2026-11-21T06:00:14.364Z",
+      "modified": "Sat, 21 Nov 2026 05:59:47 GMT"
+    },
+    "nozawa-i3": {
+      "ok": true,
+      "at": "2026-11-21T06:00:14.646Z",
+      "modified": "Sat, 21 Nov 2026 06:00:12 GMT"
+    },
+    "nozawa-i4": {
+      "ok": true,
+      "at": "2026-11-21T06:00:14.789Z",
+      "modified": "Sat, 21 Nov 2026 06:00:12 GMT"
+    },
+    "nozawa-i5": {
+      "ok": true,
+      "at": "2026-11-21T06:00:14.932Z",
+      "modified": "Sat, 21 Nov 2026 05:59:19 GMT"
+    },
+    "nozawa-i6": {
+      "ok": true,
+      "at": "2026-11-21T06:00:15.075Z",
+      "modified": "Sat, 21 Nov 2026 06:00:08 GMT"
+    },
+    "cortina-0": {
+      "ok": true,
+      "at": "2026-11-21T06:00:26.903Z",
+      "found": [
+        "https://skiday.app/emHjDgWUUgt0bg1H7v0z/3Y7QQI0cE5DrILj0yToI/embed",
+        "img:640x480@40 https://storage.googleapis.com/skiday-livecam-prod.appspot.com/camera_images/3Y7QQI0cE5DrILj0yToI/1795201236.jpg"
+      ],
+      "via": "skiday-image"
+    },
+    "tsugaike-0": {
+      "ok": true,
+      "at": "2026-11-21T06:00:26.913Z",
+      "found": [
+        "https://skiday.app/Y2oE7beX4q7UrkXyQIx9/ZOnFf6zRy8AEphO7dA1q/embed",
+        "img:640x480@40 https://storage.googleapis.com/skiday-livecam-prod.appspot.com/camera_images/ZOnFf6zRy8AEphO7dA1q/1795201237.jpg"
+      ],
+      "via": "skiday-image"
+    },
+    "tsugaike-1": {
+      "ok": true,
+      "at": "2026-11-21T06:00:27.151Z",
+      "found": [
+        "https://skiday.app/Y2oE7beX4q7UrkXyQIx9/ie9KVgBJ5G9R1jlmtfxp/embed",
+        "img:1280x720@40 https://storage.googleapis.com/skiday-livecam-prod.appspot.com/camera_images/ie9KVgBJ5G9R1jlmtfxp/1795201237.jpg"
+      ],
+      "via": "skiday-image"
+    },
+    "jiigatake-0": {
+      "ok": true,
+      "at": "2026-11-21T06:00:29.151Z",
+      "found": [
+        "img:640x360@133 https://gvs.weathernews.jp/livecam/7CDDE907A4C1/640/20261121145200.webp",
+        "img:640x360@999 https://gvs.weathernews.jp/livecam/7CDDE905CAAB/640/20261121145200.webp",
+        "img:640x360@999 https://gvs.weathernews.jp/livecam/7CDDE907F250/640/20261121145200.webp",
+        "img:640x360@999 https://gvs.weathernews.jp/livecam/7CDDE907FC3B/640/20261121145200.webp",
+        "img:320x255@2002 https://gvs.weathernews.jp/onebox/img/topic/radar.webp",
+        "img:320x255@2002 https://gvs.weathernews.jp/onebox/img/topic/typhoon.webp"
+      ],
+      "via": "element"
+    },
+    "niseko-village-1": {
+      "ok": false,
+      "at": "2026-11-21T06:00:37.559Z",
+      "error": "配信元に画像なし"
+    },
+    "niseko-village-2": {
+      "ok": false,
+      "at": "2026-11-21T06:00:37.989Z",
+      "error": "配信元に画像なし"
+    },
+    "hanazono-1": {
+      "ok": true,
+      "at": "2026-11-21T06:00:40.000Z",
+      "found": [
+        "yt:APEucNXzztc",
+        "img:640x360@133 https://gvs.weathernews.jp/livecam/7CDDE907C37C/640/20261121145900.webp",
+        "img:640x360@999 https://gvs.weathernews.jp/livecam/7CDDE907C381/640/20261121145900.webp",
+        "img:640x360@999 https://gvs.weathernews.jp/livecam/7CDDE9068774/640/20261121135700.webp",
+        "img:640x360@999 https://gvs.weathernews.jp/livecam/7CDDE907C613/640/20261121132700.webp",
+        "img:320x255@1862 https://gvs.weathernews.jp/onebox/img/topic/radar.webp",
+        "img:320x255@1862 https://gvs.weathernews.jp/onebox/img/topic/typhoon.webp"
+      ],
+      "via": "element"
+    },
+    "niseko-village-3": {
+      "ok": true,
+      "at": "2026-11-21T06:00:42.843Z",
+      "found": [
+        "img:640x360@133 https://gvs.weathernews.jp/livecam/7CDDE907C381/640/20261121145900.webp",
+        "img:640x360@999 https://gvs.weathernews.jp/livecam/7CDDE907C613/640/20261121150000.webp",
+        "img:640x360@999 https://gvs.weathernews.jp/livecam/7CDDE907C37C/640/20261121145900.webp",
+        "img:640x360@999 https://gvs.weathernews.jp/livecam/7CDDE9068774/640/20261121145000.webp",
+        "img:320x255@1897 https://gvs.weathernews.jp/onebox/img/topic/radar.webp",
+        "img:320x255@1897 https://gvs.weathernews.jp/onebox/img/topic/typhoon.webp"
+      ],
+      "via": "element"
+    },
+    "moiwa-0": {
+      "ok": true,
+      "at": "2026-11-21T06:00:50.296Z",
+      "found": [
+        "img:640x360@133 https://gvs.weathernews.jp/livecam/7CDDE907C613/640/20261121150000.webp",
+        "img:640x360@999 https://gvs.weathernews.jp/livecam/7CDDE907C381/640/20261121135200.webp",
+        "img:640x360@999 https://gvs.weathernews.jp/livecam/7CDDE907C37C/640/20261121135200.webp",
+        "img:640x360@999 https://gvs.weathernews.jp/livecam/7CDDE9068774/640/20261121144900.webp",
+        "img:320x255@1897 https://gvs.weathernews.jp/onebox/img/topic/radar.webp",
+        "img:320x255@1897 https://gvs.weathernews.jp/onebox/img/topic/typhoon.webp"
+      ],
+      "via": "element"
+    },
+    "sapporo-moiwa-0": {
+      "ok": true,
+      "at": "2026-11-21T06:00:53.329Z",
+      "found": [
+        "img:640x360@113 https://gvs.weathernews.jp/livecam/7CDDE9085EE6/640/20261121145900.webp",
+        "img:640x360@961 https://gvs.weathernews.jp/livecam/7CDDE905CC4E/640/20261121150000.webp",
+        "img:640x360@961 https://gvs.weathernews.jp/livecam/7CDDE908B7F2/640/20261121143100.webp",
+        "img:640x360@961 https://gvs.weathernews.jp/livecam/7CDDE907D705/640/20261121145900.webp",
+        "img:320x255@1929 https://gvs.weathernews.jp/onebox/img/topic/radar.webp",
+        "img:320x255@1929 https://gvs.weathernews.jp/onebox/img/topic/typhoon.webp"
+      ],
+      "via": "element"
+    },
+    "rusutsu": {
+      "ok": true,
+      "at": "2026-11-21T06:00:54.467Z",
+      "found": [
+        "img:566x90@18 https://rusutsu.com/assets/img/common/logo-wh@2x.png",
+        "img:1440x620@0 https://rusutsu.com/wp-content/uploads/live-mountain-cams.jpg",
+        "img:1920x1440@0 https://powdercam.net/app/show.php"
+      ],
+      "via": "element"
+    },
+    "furano-0": {
+      "ok": true,
+      "at": "2026-11-21T06:00:55.018Z",
+      "found": [
+        "https://skiday.app/qjjomrGpZ2icbbkYBQxh/869223040349118/embed",
+        "img:1280x960@40 https://storage.googleapis.com/skiday-livecam-prod.appspot.com/camera_images/869223040349118/20261121145244.jpg"
+      ],
+      "via": "skiday-image"
+    },
+    "furano-1": {
+      "ok": true,
+      "at": "2026-11-21T06:01:02.415Z",
+      "found": [
+        "https://skiday.app/qjjomrGpZ2icbbkYBQxh/865036042047983/embed",
+        "img:1280x960@40 https://storage.googleapis.com/skiday-livecam-prod.appspot.com/camera_images/865036042047983/l_20261121144513.jpg"
+      ],
+      "via": "skiday-image"
+    },
+    "togari-0": {
+      "ok": false,
+      "at": "2026-11-21T06:01:05.065Z",
+      "error": "配信元に画像なし"
+    },
+    "togari-1": {
+      "ok": false,
+      "at": "2026-11-21T06:01:05.523Z",
+      "error": "配信元に画像なし"
+    },
+    "nayoro-0": {
+      "ok": true,
+      "at": "2026-11-21T06:01:05.538Z",
+      "found": [
+        "img:500x125@1041 https://www.nayoro.co.jp/piyashiri/wp-content/themes/piyashiri2023/images/bnr_rakutentr.jpg"
+      ],
+      "via": "element"
+    },
+    "madarao-0": {
+      "ok": true,
+      "at": "2026-11-21T06:01:14.296Z",
+      "found": [
+        "img:640x480@308 https://madarao.jp/livecam/upload/Live-18.jpg",
+        "img:768x280@663 https://www.madarao.jp/system/wp-content/themes/madarao/assets/images/snowbase/bnr_snowbase.jpg",
+        "img:360x131@798 https://www.madarao.jp/system/wp-content/uploads/2018/09/bnr_hotel-720x263.jpg",
+        "img:720x263@934 https://www.madarao.jp/system/wp-content/uploads/2022/02/bnr_rental_ja-720x263-1.jpg",
+        "img:360x131@1070 https://www.madarao.jp/system/wp-content/uploads/2020/09/bnr_recruit_2021winter-1-720x263.jpg",
+        "img:720x263@1206 https://www.madarao.jp/system/wp-content/uploads/2022/02/banner_rules-1.png"
+      ],
+      "via": "element"
+    },
+    "iizuna-0": {
+      "ok": true,
+      "at": "2026-11-21T06:01:15.579Z",
+      "found": [
+        "img:800x600@0 https://iizunaresort.com/livecam/0000.jpg"
+      ],
+      "via": "element"
+    },
+    "tateshina-tokyu-0": {
+      "ok": true,
+      "at": "2026-11-21T06:01:17.662Z",
+      "found": [
+        "https://skiday.app/g5LuEYbIMRz6HMb9yMk5/865036047360688/embed",
+        "img:1280x960@40 https://storage.googleapis.com/skiday-livecam-prod.appspot.com/camera_images/865036047360688/l_20261121145014.jpg"
+      ],
+      "via": "skiday-image"
+    },
+    "pilatus-0": {
+      "ok": true,
+      "at": "2026-11-21T06:01:19.698Z",
+      "found": [
+        "img:580x156@252 https://www.pilatus.jp/img/common/title_text09.png",
+        "img:1280x720@870 https://www.kitayatu.jp/live/live1.jpg",
+        "img:1280x720@1577 https://www.kitayatu.jp/live/live2.jpg",
+        "img:1280x720@2284 https://www.kitayatu.jp/live/live3.jpg",
+        "img:1280x720@2991 https://www.kitayatu.jp/live/live4.jpg"
+      ],
+      "via": "element"
+    },
+    "tateshina-tokyu-1": {
+      "ok": true,
+      "at": "2026-11-21T06:01:26.575Z",
+      "found": [
+        "https://skiday.app/g5LuEYbIMRz6HMb9yMk5/869223040348789/embed",
+        "img:1280x960@40 https://storage.googleapis.com/skiday-livecam-prod.appspot.com/camera_images/869223040348789/l_20261121145011.jpg"
+      ],
+      "via": "skiday-image"
+    },
+    "fujimi-panorama-0": {
+      "ok": true,
+      "at": "2026-11-21T06:01:28.364Z",
+      "found": [
+        "img:500x86@15 https://www.fujimipanorama.com/snow/wp-content/themes/snowv2/img/logos/logo.png",
+        "img:300x31@599 https://www.fujimipanorama.com/summer/wp-content/uploads/2023/04/mikami.png",
+        "img:1000x800@814 https://www.fujimipanorama.com/snow/wp-content/themes/snowv2/img/top/more_skischool.png",
+        "img:1000x800@814 https://www.fujimipanorama.com/snow/wp-content/themes/snowv2/img/top/more_snowboardschool.png",
+        "img:1000x800@955 https://www.fujimipanorama.com/snow/wp-content/themes/snowv2/img/top/more_kidspark.png",
+        "img:1000x800@955 https://www.fujimipanorama.com/snow/wp-content/themes/snowv2/img/top/enjoy_ticket2.png"
+      ],
+      "via": "element"
+    },
+    "norikura-0": {
+      "ok": true,
+      "at": "2026-11-21T06:01:30.191Z",
+      "found": [
+        "https://skiday.app/k83EhvgHd1LWRyNFQVvM/869223047453079/embed",
+        "img:1280x960@40 https://storage.googleapis.com/skiday-livecam-prod.appspot.com/camera_images/869223047453079/20261121143533.jpg"
+      ],
+      "via": "skiday-image"
+    },
+    "shiga-takama-1": {
+      "ok": true,
+      "at": "2026-11-21T06:01:31.294Z",
+      "found": [],
+      "via": "crop"
+    },
+    "komaruyama-0": {
+      "ok": true,
+      "at": "2026-11-21T06:01:39.474Z",
+      "found": [
+        "img:640x360@113 https://gvs.weathernews.jp/livecam/7CDDE907C5D2/640/20261121150000.webp",
+        "img:640x360@961 https://gvs.weathernews.jp/livecam/7CDDE908B1E6/640/20261121150000.webp",
+        "img:640x360@961 https://gvs.weathernews.jp/livecam/7CDDE906B75B/640/20261121145900.webp",
+        "img:640x360@961 https://gvs.weathernews.jp/livecam/7CDDE905CC87/640/20261121150000.webp",
+        "img:320x255@1859 https://gvs.weathernews.jp/onebox/img/topic/radar.webp",
+        "img:320x255@1859 https://gvs.weathernews.jp/onebox/img/topic/typhoon.webp"
+      ],
+      "via": "element"
+    },
+    "shirakaba-0": {
+      "ok": true,
+      "at": "2026-11-21T06:01:39.706Z",
+      "found": [
+        "https://skiday.app/7dGYnaLArVRaXUDgvrK7/865036045460456/embed",
+        "img:1280x960@40 https://storage.googleapis.com/skiday-livecam-prod.appspot.com/camera_images/865036045460456/20261121144510.jpg"
+      ],
+      "via": "skiday-image"
+    },
+    "shirakaba-1": {
+      "ok": true,
+      "at": "2026-11-21T06:01:41.042Z",
+      "found": [
+        "https://skiday.app/7dGYnaLArVRaXUDgvrK7/869223040348839/embed",
+        "img:1280x960@40 https://storage.googleapis.com/skiday-livecam-prod.appspot.com/camera_images/869223040348839/20261121144507.jpg"
+      ],
+      "via": "skiday-image"
+    },
+    "shirakaba-2": {
+      "ok": true,
+      "at": "2026-11-21T06:01:42.115Z",
+      "found": [
+        "https://skiday.app/7dGYnaLArVRaXUDgvrK7/865036042047959/embed",
+        "img:1280x960@40 https://storage.googleapis.com/skiday-livecam-prod.appspot.com/camera_images/865036042047959/20261121144514.jpg"
+      ],
+      "via": "skiday-image"
+    },
+    "shirakaba-3": {
+      "ok": true,
+      "at": "2026-11-21T06:01:51.294Z",
+      "found": [
+        "https://skiday.app/7dGYnaLArVRaXUDgvrK7/869223040349274/embed",
+        "img:1280x960@40 https://storage.googleapis.com/skiday-livecam-prod.appspot.com/camera_images/869223040349274/20261121144514.jpg"
+      ],
+      "via": "skiday-image"
+    },
+    "nakayama-0": {
+      "ok": true,
+      "at": "2026-11-21T06:01:52.062Z",
+      "found": [
+        "img:300x50@64 https://nakayama-ski.com/wp-content/themes/ka2021-T/img/logo.png",
+        "img:400x300@0 https://nakayama-ski.com/wp-content/themes/ka2021-T/img/err.jpg",
+        "img:1600x700@161 https://nakayama-ski.com/wp-content/themes/ka2021-T/img/top-noimg.jpg",
+        "img:400x300@480 https://nakayama-ski.com/wp-content/themes/ka2021-T/img/err.jpg",
+        "img:300x80@798 https://nakayama-ski.com/banner/bouyou.jpg",
+        "img:300x80@867 https://nakayama-ski.com/banner/kwp.jpg"
+      ],
+      "via": "element"
+    },
+    "asahidake-0": {
+      "ok": true,
+      "at": "2026-11-21T06:01:53.162Z",
+      "found": [
+        "img:640x480@10 https://webcam.wakasagroup.com/asahidake_webcam_now.jpg"
+      ],
+      "via": "element"
+    },
+    "asarigawa-0": {
+      "ok": true,
+      "at": "2026-11-21T06:01:53.536Z",
+      "found": [
+        "img:300x56@12 https://asari-ski.com/common/img/logotype.svg",
+        "img:300x56@0 https://asari-ski.com/common/img/logotype-white.svg",
+        "img:457x129@3819 https://asari-ski.com/common/img/banner/banner-01.png",
+        "img:457x129@3819 https://asari-ski.com/common/img/banner/banner-02.png",
+        "img:457x129@3879 https://asari-ski.com/common/img/banner/banner-03.png",
+        "img:456x129@3879 https://asari-ski.com/common/img/banner/banner-04.png"
+      ],
+      "via": "crop"
+    },
+    "akan-0": {
+      "ok": true,
+      "at": "2026-11-21T06:02:04.255Z",
+      "found": [
+        "img:640x360@113 https://gvs.weathernews.jp/livecam/7CDDE9085DED/640/20261121143000.webp",
+        "img:640x360@961 https://gvs.weathernews.jp/livecam/7CDDE908D2F1/640/20261121142900.webp",
+        "img:640x360@961 https://gvs.weathernews.jp/livecam/7CDDE9086B31/640/20261121143000.webp",
+        "img:640x360@961 https://gvs.weathernews.jp/livecam/7CDDE908C7B1/640/20261121142900.webp",
+        "img:320x255@1732 https://gvs.weathernews.jp/onebox/img/topic/radar.webp",
+        "img:320x255@1732 https://gvs.weathernews.jp/onebox/img/topic/typhoon.webp"
+      ],
+      "via": "element"
+    },
+    "onuma-0": {
+      "ok": true,
+      "at": "2026-11-21T06:02:04.863Z",
+      "found": [
+        "img:640x360@133 https://gvs.weathernews.jp/livecam/7CDDE907A6B7/640/20261121142800.webp",
+        "img:640x360@999 https://gvs.weathernews.jp/livecam/7CDDE907B41B/640/20261121142900.webp",
+        "img:800x600@999 https://gvs.weathernews.jp/livecam/410000111/640/20261121052747.jpg",
+        "img:640x360@999 https://gvs.weathernews.jp/livecam/7CDDE907A943/640/20261121142800.webp",
+        "img:320x255@1897 https://gvs.weathernews.jp/onebox/img/topic/radar.webp",
+        "img:320x255@1897 https://gvs.weathernews.jp/onebox/img/topic/typhoon.webp"
+      ],
+      "via": "element"
+    }
+  }
+}
